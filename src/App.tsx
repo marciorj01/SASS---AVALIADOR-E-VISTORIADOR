@@ -3,33 +3,50 @@ import Dashboard from "./components/Dashboard";
 import Calculator, { type SavePayload } from "./components/Calculator";
 import PhotoField from "./components/PhotoField";
 import Inspections from "./components/Inspections";
+import Login from "./components/Login";
+import Cadastro from "./components/Cadastro";
+import Settings from "./components/Settings";
 import { Btn, Field, Modal, Select, TextArea, TextInput } from "./components/ui";
 import {
   IcCalc,
   IcCamera,
   IcCheck,
   IcClip,
+  IcCog,
   IcDash,
   IcInstall,
+  IcLogout,
+  IcUser,
   IcWifi,
   IcWifiOff,
   LogoMark,
 } from "./components/icons";
 import {
+  clearSession,
+  hashPass,
   INSPECTION_TYPES,
   nextCode,
+  readSession,
   seedActivity,
+  seedClients,
   seedInspections,
   seedMeasurements,
   seedPhotos,
+  seedProfile,
+  seedUsers,
   todayISO,
   uid,
   usePersist,
+  writeSession,
   type Activity,
+  type Client,
   type Inspection,
   type InspStatus,
   type Measurement,
   type Photo,
+  type Profile,
+  type Session,
+  type User,
   type ViewId,
 } from "./lib/store";
 
@@ -43,11 +60,13 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const NAV: { id: ViewId; label: string; index: string; icon: ReactNode }[] = [
-  { id: "painel", label: "Painel de campo", index: "01", icon: <IcDash /> },
-  { id: "calc", label: "Calculadora", index: "02", icon: <IcCalc /> },
-  { id: "fotos", label: "Fotos & anotações", index: "03", icon: <IcCamera /> },
-  { id: "vistorias", label: "Vistorias", index: "04", icon: <IcClip /> },
+const NAV: { id: ViewId; label: string; short: string; index: string; icon: ReactNode }[] = [
+  { id: "painel", label: "Painel de campo", short: "Painel", index: "01", icon: <IcDash /> },
+  { id: "calc", label: "Calculadora", short: "Medidas", index: "02", icon: <IcCalc /> },
+  { id: "fotos", label: "Fotos & anotações", short: "Fotos", index: "03", icon: <IcCamera /> },
+  { id: "vistorias", label: "Vistorias", short: "Vistorias", index: "04", icon: <IcClip /> },
+  { id: "cadastro", label: "Cadastro do avaliador", short: "Cadastro", index: "05", icon: <IcUser /> },
+  { id: "config", label: "Configurações", short: "Config", index: "06", icon: <IcCog /> },
 ];
 
 const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
@@ -55,6 +74,8 @@ const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
   calc: { title: "Calculadora", sub: "medidas & áreas" },
   fotos: { title: "Fotos & anotações", sub: "registro fotográfico" },
   vistorias: { title: "Vistorias", sub: "fichas & relatórios" },
+  cadastro: { title: "Cadastro", sub: "avaliador & vistoriador" },
+  config: { title: "Configurações", sub: "acesso & preferências" },
 };
 
 function TopClock() {
@@ -77,6 +98,13 @@ export default function App() {
   const [photos, setPhotos] = usePersist<Photo[]>("prumo.photos", seedPhotos);
   const [measurements, setMeasurements] = usePersist<Measurement[]>("prumo.measurements", seedMeasurements);
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
+
+  /* ---------- autenticação, perfil e vistoriados ---------- */
+  const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
+  const [profile, setProfile] = usePersist<Profile>("prumo.profile", seedProfile);
+  const [clients, setClients] = usePersist<Client[]>("prumo.clients", seedClients);
+  const [hasLoggedIn, setHasLoggedIn] = usePersist<boolean>("prumo.logged", () => false);
+  const [session, setSession] = useState<Session | null>(() => readSession());
 
   /* ---------- estado de navegação ---------- */
   const [view, setView] = useState<ViewId>("painel");
@@ -135,6 +163,63 @@ export default function App() {
   const log = useCallback((kind: Activity["kind"], text: string) => {
     setActivity((prev) => [{ id: uid(), text, at: new Date().toISOString(), kind }, ...prev].slice(0, 40));
   }, [setActivity]);
+
+  /* ---------- ações: autenticação, perfil e vistoriados ---------- */
+  const handleLogin = useCallback(
+    (username: string, pass: string, remember: boolean): string | null => {
+      const u = users.find((x) => x.username === username.trim().toLowerCase());
+      if (!u || u.pass !== hashPass(pass)) return "Usuário ou senha inválidos. No primeiro acesso use admin / admin.";
+      writeSession({ userId: u.id, username: u.username, name: u.name, loginAt: new Date().toISOString() }, remember);
+      setSession(readSession());
+      setHasLoggedIn(true);
+      return null;
+    },
+    [users, setHasLoggedIn]
+  );
+
+  const handleLogout = useCallback(() => {
+    clearSession();
+    setSession(null);
+    setView("painel");
+  }, []);
+
+  const changePass = useCallback(
+    (current: string, next: string): string | null => {
+      if (!session) return "Sessão expirada — entre novamente.";
+      const u = users.find((x) => x.id === session.userId);
+      if (!u || u.pass !== hashPass(current)) return "A senha atual informada está incorreta.";
+      if (next.length < 4) return "A nova senha precisa ter ao menos 4 caracteres.";
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, pass: hashPass(next) } : x)));
+      return null;
+    },
+    [session, users, setUsers]
+  );
+
+  const saveProfile = useCallback(
+    (p: Profile) => {
+      setProfile(p);
+      toast("Cadastro profissional salvo.");
+    },
+    [setProfile, toast]
+  );
+
+  const addClient = useCallback(
+    (c: Client) => {
+      setClients((prev) => [c, ...prev]);
+      log("vistoria", `Vistoriado cadastrado: ${c.name}`);
+      toast(`Vistoriado “${c.name}” cadastrado.`);
+    },
+    [setClients, log, toast]
+  );
+
+  const deleteClient = useCallback(
+    (id: string) => {
+      const c = clients.find((x) => x.id === id);
+      setClients((prev) => prev.filter((x) => x.id !== id));
+      toast(`Vistoriado “${c?.name ?? ""}” removido.`);
+    },
+    [clients, setClients, toast]
+  );
 
   /* ---------- ações: medições ---------- */
   const saveMeasurement = useCallback(
@@ -288,6 +373,11 @@ export default function App() {
 
   const meta = VIEW_META[view];
 
+  /* ---------- portão de acesso ---------- */
+  if (!session) {
+    return <Login firstUse={!hasLoggedIn} onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen">
       {/* ---------- barra lateral ---------- */}
@@ -330,7 +420,7 @@ export default function App() {
           <p className="mt-1 text-[11.5px] leading-snug text-fog-500">
             {photos.length} foto(s) · {measurements.length} medição(ões) neste dispositivo
           </p>
-          <p className="num mt-2 text-[10px] text-fog-600">Prumo v1.0 · PWA</p>
+          <p className="num mt-2 text-[10px] text-fog-600">Prumo v1.1 · PWA · acesso restrito</p>
         </div>
       </aside>
 
@@ -365,6 +455,22 @@ export default function App() {
                   <IcInstall width={14} height={14} /> Instalar app
                 </Btn>
               ) : null}
+              <span
+                className="chip cursor-pointer border-brand-400/40 bg-brand-400/10 text-brand-300 transition hover:bg-brand-400/20"
+                title={`Sessão de ${session.name} (${session.username}) — clique para ir ao cadastro`}
+                onClick={() => setView("cadastro")}
+              >
+                <IcUser width={12} height={12} />
+                <span className="hidden max-w-[130px] truncate sm:inline">{profile.name.trim() || session.name}</span>
+              </span>
+              <button
+                onClick={handleLogout}
+                title="Encerrar sessão"
+                aria-label="Encerrar sessão"
+                className="rounded-md border border-line bg-ink-800/60 p-1.5 text-fog-500 transition hover:border-danger-400/50 hover:text-danger-400 active:scale-95"
+              >
+                <IcLogout width={15} height={15} />
+              </button>
             </div>
           </div>
         </header>
@@ -409,6 +515,7 @@ export default function App() {
                 inspections={inspections}
                 photos={photos}
                 measurements={measurements}
+                profile={profile}
                 selectedId={selectedInsp}
                 onSelect={setSelectedInsp}
                 onSetStatus={setInspStatus}
@@ -417,6 +524,26 @@ export default function App() {
                 onOpenPhoto={openPhoto}
                 onGotoCalc={() => setView("calc")}
                 onGotoFotos={() => setView("fotos")}
+                toast={toast}
+              />
+            )}
+            {view === "cadastro" && <Cadastro profile={profile} onSave={saveProfile} />}
+            {view === "config" && (
+              <Settings
+                profile={profile}
+                onSaveProfile={saveProfile}
+                clients={clients}
+                onAddClient={addClient}
+                onDeleteClient={deleteClient}
+                session={session}
+                onChangePass={changePass}
+                onLogout={handleLogout}
+                online={online}
+                canInstall={!!installEvt}
+                installed={installed}
+                onInstall={() => void doInstall()}
+                data={{ inspections, photos, measurements, activity }}
+                toast={toast}
               />
             )}
           </div>
@@ -425,7 +552,7 @@ export default function App() {
 
       {/* ---------- navegação móvel ---------- */}
       <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line-soft bg-ink-900/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-6">
           {NAV.map((n) => {
             const active = view === n.id;
             return (
@@ -435,13 +562,13 @@ export default function App() {
                   setView(n.id);
                   if (n.id !== "vistorias") setSelectedInsp(null);
                 }}
-                className={`relative flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition ${
+                className={`relative flex flex-col items-center gap-1 py-2 text-[9px] font-medium transition ${
                   active ? "text-brand-300" : "text-fog-600"
                 }`}
               >
-                {active && <span className="absolute inset-x-6 top-0 h-0.5 rounded-full bg-brand-400" />}
+                {active && <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-brand-400" />}
                 {n.icon}
-                {n.label.split(" ")[0] === "Fotos" ? "Fotos" : n.label.split(" ")[0]}
+                {n.short}
               </button>
             );
           })}
@@ -477,12 +604,18 @@ export default function App() {
         }
       >
         <div className="space-y-3">
-          <Field label="Cliente *">
+          <Field label="Cliente *" hint={clients.length > 0 ? "Sugestões dos vistoriados cadastrados em Configurações." : undefined}>
             <TextInput
+              list="prumo-clientes"
               value={form.client}
               placeholder="Nome do contratante"
               onChange={(e) => setForm((f) => ({ ...f, client: e.target.value }))}
             />
+            <datalist id="prumo-clientes">
+              {clients.map((c) => (
+                <option key={c.id} value={c.name} />
+              ))}
+            </datalist>
           </Field>
           <Field label="Endereço do imóvel *">
             <TextInput

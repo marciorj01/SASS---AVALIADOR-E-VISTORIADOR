@@ -2,7 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
 /* ---------- Tipos ---------- */
 
-export type ViewId = "painel" | "calc" | "fotos" | "vistorias";
+export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "cadastro" | "config";
 export type InspStatus = "agendada" | "campo" | "concluida";
 
 export interface Inspection {
@@ -50,6 +50,39 @@ export interface Activity {
   kind: "calc" | "foto" | "vistoria" | "nota";
 }
 
+export interface User {
+  id: string;
+  username: string;
+  pass: string; // hash local
+  name: string;
+}
+
+export interface Session {
+  userId: string;
+  username: string;
+  name: string;
+  loginAt: string;
+}
+
+export interface Profile {
+  name: string;
+  title: string;
+  registryLabel: string;
+  registryNumber: string;
+  doc: string;
+  phone: string;
+  email: string;
+  city: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  doc: string;
+  phone: string;
+  addedAt: string;
+}
+
 /* ---------- Constantes de domínio ---------- */
 
 export const CATEGORIES = [
@@ -72,6 +105,17 @@ export const INSPECTION_TYPES = [
   "Avaliação para garantia",
   "Inspeção predial",
 ];
+
+export const PROFESSIONAL_TITLES = [
+  "Avaliador mercadológico",
+  "Vistoriador de imóveis",
+  "Avaliador e vistoriador",
+  "Engenheiro avaliador",
+  "Arquiteto avaliador",
+  "Perito judicial",
+];
+
+export const REGISTRY_LABELS = ["CNAI", "CRECI", "CREA", "CAU", "CONPEJ", "Outro"];
 
 /** Fatores de conversão para m² */
 export const AREA_UNITS: { id: string; label: string; short: string; f: number }[] = [
@@ -168,6 +212,55 @@ export const fileToDataUrl = (file: File): Promise<string> =>
     reader.onerror = () => reject(new Error("read"));
     reader.readAsDataURL(file);
   });
+
+/* ---------- Autenticação local (demonstração, sem backend) ---------- */
+
+/** Hash simples FNV-1a — evita guardar a senha em texto puro no dispositivo. */
+export const hashPass = (s: string): string => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+};
+
+const SESSION_KEY = "prumo.session";
+
+export const readSession = (): Session | null => {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY) ?? sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Session;
+    return s && s.userId ? s : null;
+  } catch {
+    return null;
+  }
+};
+
+export const writeSession = (s: Session, remember: boolean): void => {
+  try {
+    const raw = JSON.stringify(s);
+    if (remember) {
+      localStorage.setItem(SESSION_KEY, raw);
+      sessionStorage.removeItem(SESSION_KEY);
+    } else {
+      sessionStorage.setItem(SESSION_KEY, raw);
+      localStorage.removeItem(SESSION_KEY);
+    }
+  } catch {
+    /* armazenamento indisponível */
+  }
+};
+
+export const clearSession = (): void => {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* armazenamento indisponível */
+  }
+};
 
 /* ---------- Persistência local ---------- */
 
@@ -280,7 +373,39 @@ function buildSeed() {
     { id: uid(), text: "Vistoria em campo iniciada para Carlos Menezes", at: iso(70 * 60000), kind: "vistoria" },
   ];
 
-  return { inspections, photos, measurements, activity };
+  const users: User[] = [
+    { id: "u-admin", username: "admin", pass: hashPass("admin"), name: "Administrador" },
+  ];
+
+  const profile: Profile = {
+    name: "",
+    title: PROFESSIONAL_TITLES[0],
+    registryLabel: "CNAI",
+    registryNumber: "",
+    doc: "",
+    phone: "",
+    email: "",
+    city: "",
+  };
+
+  const clients: Client[] = [
+    {
+      id: "cl-demo-1",
+      name: "Carlos Menezes",
+      doc: "CPF 214.556.878-09",
+      phone: "(11) 98877-1020",
+      addedAt: iso(90 * 60000),
+    },
+    {
+      id: "cl-demo-2",
+      name: "Imobiliária Horizonte Ltda.",
+      doc: "CNPJ 12.345.678/0001-90",
+      phone: "(19) 3232-4455",
+      addedAt: iso(3 * 86400000),
+    },
+  ];
+
+  return { inspections, photos, measurements, activity, users, profile, clients };
 }
 
 const SEED = buildSeed();
@@ -288,3 +413,6 @@ export const seedInspections = () => SEED.inspections;
 export const seedPhotos = () => SEED.photos;
 export const seedMeasurements = () => SEED.measurements;
 export const seedActivity = () => SEED.activity;
+export const seedUsers = () => SEED.users;
+export const seedProfile = () => SEED.profile;
+export const seedClients = () => SEED.clients;

@@ -219,3 +219,69 @@ export const IcFlag = (p: P) => (
     <path d="M6 5h11l-2.5 3.5L17 12H6" />
   </svg>
 );
+
+export const IcDownload = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 4v11M7.5 11l4.5 4.5L16.5 11" />
+    <path d="M4.5 17v1.5A1.5 1.5 0 0 0 6 20h12a1.5 1.5 0 0 0 1.5-1.5V17" />
+  </svg>
+);
+
+export const IcUser = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="8" r="3.6" />
+    <path d="M5 20c.8-3.6 3.6-5.6 7-5.6s6.2 2 7 5.6" />
+  </svg>
+);
+
+export const IcUsers = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="9" cy="8.5" r="3.2" />
+    <path d="M3.2 19.5c.7-3.2 3-5 5.8-5s5.1 1.8 5.8 5" />
+    <path d="M15.5 5.6a3.1 3.1 0 1 1 1 6.1M17.4 14.7c2 .5 3.4 2 3.9 4.4" />
+  </svg>
+);
+
+export const IcCog = (p: P) => (
+  <svg {...base(p)}>
+    <circle cx="12" cy="12" r="3.2" />
+    <path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9" />
+  </svg>
+);
+
+export const IcLock = (p: P) => (
+  <svg {...base(p)}>
+    <rect x="5" y="10.5" width="14" height="9.5" rx="1.8" />
+    <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+    <path d="M12 14.5v2" />
+  </svg>
+);
+
+export const IcLogout = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M14 4H6.5A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20H14" />
+    <path d="M10 12h10M16.5 8.5 20 12l-3.5 3.5" />
+  </svg>
+);
+
+export const IcEye = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M2.5 12S6 5.8 12 5.8 21.5 12 21.5 12 18 18.2 12 18.2 2.5 12 2.5 12Z" />
+    <circle cx="12" cy="12" r="2.8" />
+  </svg>
+);
+
+export const IcEyeOff = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M4 4l16 16" />
+    <path d="M9.9 5.2A9.8 9.8 0 0 1 12 5c6 0 9.5 7 9.5 7a17.6 17.6 0 0 1-3.2 4M6 6.6A16.4 16.4 0 0 0 2.5 12S6 19 12 19a9.3 9.3 0 0 0 3.5-.7" />
+    <path d="M9.5 9.8a2.9 2.9 0 0 0 4 4.1" />
+  </svg>
+);
+
+export const IcAlert = (p: P) => (
+  <svg {...base(p)}>
+    <path d="M12 3.5 22 20H2Z" />
+    <path d="M12 9.5v4.5M12 17h.01" />
+  </svg>
+);

@@ -8,6 +8,7 @@ import {
   type InspStatus,
   type Measurement,
   type Photo,
+  type Profile,
 } from "../lib/store";
 import { Btn, EmptyState, SectionHead, Seg, StatusChip } from "./ui";
 import {
@@ -18,6 +19,7 @@ import {
   IcChevR,
   IcClip,
   IcClock,
+  IcDownload,
   IcFlag,
   IcNote,
   IcPin,
@@ -39,10 +41,12 @@ function ReportSheet({
   insp,
   photos,
   measurements,
+  profile,
 }: {
   insp: Inspection;
   photos: Photo[];
   measurements: Measurement[];
+  profile: Profile;
 }) {
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -51,6 +55,10 @@ function ReportSheet({
     campo: "Em campo",
     concluida: "Concluída",
   };
+  const tech = profile.name.trim() || "Responsável técnico";
+  const registry = profile.registryNumber.trim()
+    ? `${profile.registryLabel} ${profile.registryNumber}`
+    : profile.registryLabel;
 
   return (
     <div className="print-area rounded-lg bg-paper-50 p-6 text-[#22304a] shadow-2xl sm:p-9">
@@ -90,8 +98,21 @@ function ReportSheet({
           <div className="flex justify-between gap-4 border-b border-[#d9d3c2] py-1.5">
             <dt className="text-[#6b7a94]">Município</dt><dd className="font-semibold">{insp.city || "—"}</dd>
           </div>
+          <div className="flex justify-between gap-4 border-b border-[#d9d3c2] py-1.5">
+            <dt className="text-[#6b7a94]">Tipo de serviço</dt><dd className="text-right font-semibold">{insp.type}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-[#d9d3c2] py-1.5">
+            <dt className="text-[#6b7a94]">Responsável técnico</dt>
+            <dd className="text-right font-semibold">{tech} <span className="font-normal text-[#6b7a94]">· {profile.title}</span></dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-[#d9d3c2] py-1.5">
+            <dt className="text-[#6b7a94]">Registro profissional</dt><dd className="text-right font-semibold">{registry}</dd>
+          </div>
           <div className="flex justify-between gap-4 border-b border-[#d9d3c2] py-1.5 sm:col-span-2">
-            <dt className="text-[#6b7a94]">Tipo de serviço</dt><dd className="font-semibold">{insp.type}</dd>
+            <dt className="text-[#6b7a94]">Contato do avaliador</dt>
+            <dd className="text-right font-semibold">
+              {[profile.phone, profile.email, profile.city].filter(Boolean).join(" · ") || "—"}
+            </dd>
           </div>
         </dl>
       </section>
@@ -168,10 +189,13 @@ function ReportSheet({
 
       <div className="mt-14 grid grid-cols-2 gap-10">
         <div className="border-t border-[#22304a] pt-2 text-center text-[11px] text-[#42536f]">
-          Perito / vistoriador responsável
+          <p className="text-[12.5px] font-bold text-[#22304a]">{tech}</p>
+          <p>{profile.title} · {registry}</p>
+          <p className="num mt-0.5 text-[10px]">Perito / vistoriador responsável</p>
         </div>
         <div className="border-t border-[#22304a] pt-2 text-center text-[11px] text-[#42536f]">
-          Cliente ou representante
+          <p className="text-[12.5px] font-bold text-[#22304a]">{insp.client}</p>
+          <p className="num mt-0.5 text-[10px]">Cliente ou representante legal</p>
         </div>
       </div>
 
@@ -191,6 +215,7 @@ export default function Inspections({
   inspections,
   photos,
   measurements,
+  profile,
   selectedId,
   onSelect,
   onSetStatus,
@@ -199,10 +224,12 @@ export default function Inspections({
   onOpenPhoto,
   onGotoCalc,
   onGotoFotos,
+  toast,
 }: {
   inspections: Inspection[];
   photos: Photo[];
   measurements: Measurement[];
+  profile: Profile;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onSetStatus: (id: string, status: InspStatus) => void;
@@ -211,10 +238,26 @@ export default function Inspections({
   onOpenPhoto: (id: string) => void;
   onGotoCalc: () => void;
   onGotoFotos: () => void;
+  toast: (text: string) => void;
 }) {
   const [filter, setFilter] = useState<StatusFilter>("todas");
   const [tab, setTab] = useState<Tab>("fotos");
   const [confirmDel, setConfirmDel] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  const savePdf = async (insp: Inspection) => {
+    setPdfBusy(true);
+    try {
+      /* carregamento sob demanda mantém o app leve na abertura */
+      const { generateReportPdf } = await import("../lib/pdf");
+      await generateReportPdf({ insp, photos, measurements, profile });
+      toast(`PDF do relatório ${insp.code} salvo.`);
+    } catch {
+      toast("Não foi possível gerar o PDF neste dispositivo.");
+    } finally {
+      setPdfBusy(false);
+    }
+  };
 
   const selected = inspections.find((i) => i.id === selectedId) ?? null;
   const list = inspections
@@ -313,9 +356,23 @@ export default function Inspections({
             ]}
           />
           {tab === "relatorio" && (
-            <Btn variant="primary" className="no-print" onClick={() => window.print()}>
-              <IcPrinter width={15} height={15} /> Imprimir / salvar PDF
-            </Btn>
+            <div className="no-print flex gap-2">
+              <Btn onClick={() => window.print()}>
+                <IcPrinter width={15} height={15} /> Imprimir
+              </Btn>
+              <Btn variant="primary" disabled={pdfBusy} onClick={() => void savePdf(selected)}>
+                {pdfBusy ? (
+                  <>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-ink-950/30 border-t-ink-950" />
+                    Gerando…
+                  </>
+                ) : (
+                  <>
+                    <IcDownload width={15} height={15} /> Salvar PDF
+                  </>
+                )}
+              </Btn>
+            </div>
           )}
         </div>
 
@@ -381,7 +438,9 @@ export default function Inspections({
               </div>
             ))}
 
-          {tab === "relatorio" && <ReportSheet insp={selected} photos={photos} measurements={measurements} />}
+          {tab === "relatorio" && (
+            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} />
+          )}
         </div>
       </div>
     );
