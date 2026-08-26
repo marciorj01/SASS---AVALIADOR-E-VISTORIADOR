@@ -1,0 +1,28 @@
+{
+  "name": "Prumo — Vistoria & Avaliação de Imóveis",
+  "short_name": "Prumo",
+  "description": "Sistema de campo para peritos e vistoriadores: medição de terrenos e plantas, fotos com anotações e relatórios. Funciona offline.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a111f",
+  "theme_color": "#0a111f",
+  "lang": "pt-BR",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
