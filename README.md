@@ -36,7 +36,7 @@ npm run preview    # testa a build de produção
 
 # Como guardar este projeto no GitHub
 
-Repositório de destino: `https://github.com/marciorj01/ROJEX-AVALIACAO-VISTORIA-IMOB.git`
+Repositório de destino: `https://github.com/marciorj01/ROJEX-AVALIADOR-E-VISTORIADOR-IMOB.git`
 
 ## 1) Pré-requisitos
 
