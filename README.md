@@ -28,9 +28,13 @@ React 18 · TypeScript · Vite · Tailwind CSS v4 · jsPDF + autotable · PWA (s
 ```bash
 npm install
 npm run dev        # desenvolvimento em http://localhost:3000
+npm run typecheck  # verifica os tipos TypeScript
+npm test           # executa os testes automatizados
 npm run build      # gera a pasta dist/ (versão de produção)
 npm run preview    # testa a build de produção
 ```
+
+Para publicar a build no Apache do XAMPP, consulte o [guia de execução no XAMPP](./XAMPP.md).
 
 ---
 
