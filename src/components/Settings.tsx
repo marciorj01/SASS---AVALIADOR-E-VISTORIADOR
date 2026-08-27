@@ -24,6 +24,7 @@ import {
   type Measurement,
   type Photo,
   type Profile,
+  type PropertyAssessment,
   type Session,
 } from "../lib/store";
 
@@ -40,7 +41,7 @@ interface SettingsProps {
   canInstall: boolean;
   installed: boolean;
   onInstall: () => void;
-  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[] };
+  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[] };
   toast: (t: string) => void;
 }
 
@@ -139,6 +140,7 @@ export default function Settings({
       medicoes: data.measurements,
       fotos: data.photos,
       atividade: data.activity,
+      avaliacoesMercadologicas: data.assessments,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -314,7 +316,7 @@ export default function Settings({
             <PanelHead
               index="D"
               title="Aplicativo & dados"
-              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s).`}
+              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s) · ${data.assessments.length} avaliação(ões).`}
               icon={<IcCog width={16} height={16} />}
             />
             <div className="space-y-3">

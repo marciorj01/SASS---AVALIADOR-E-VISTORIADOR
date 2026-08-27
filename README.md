@@ -14,6 +14,7 @@ Funciona offline no celular, instala como aplicativo e guarda todos os dados no 
 | --- | --- |
 | **Painel de campo** | relógio de campo, próxima vistoria, indicadores (área total medida, fotos, medições), diário de atividade, status do PWA |
 | **Calculadora de medidas** | terreno (retângulo, triângulo por Heron, trapézio, círculo e **polígono irregular** pela fórmula de Gauss com pré-visualização), planta com cômodos e taxa de ocupação, conversor agrário (ha, alqueires, tarefa, acre…) |
+| **Avaliação mercadológica** | ficha do imóvel avaliando, amostras de mercado, preço unitário, fatores de localização/conservação/oferta, homogeneização, projeção de valor e vínculo com vistoria |
 | **Fotos & anotações** | câmera ao vivo do celular, envio de imagens com compressão automática, categorias e **anotações extras do perito em cada foto** |
 | **Vistorias** | fichas por cliente com fluxo Agendada → Em campo → Concluída, fotos e medições vinculadas, **relatório imprimível e exportação em PDF** (jsPDF) |
 | **Cadastro do avaliador** | nome, atuação (CNAI/CRECI/CREA/CAU), registro, contato — usado nas assinaturas dos relatórios |
@@ -21,7 +22,7 @@ Funciona offline no celular, instala como aplicativo e guarda todos os dados no 
 
 ## Tecnologias
 
-React 18 · TypeScript · Vite · Tailwind CSS v4 · jsPDF + autotable · PWA (service worker + manifest) · localStorage
+React 18 · TypeScript · Vite · Tailwind CSS v4 · jsPDF + autotable · Vitest · PWA (service worker + manifest) · localStorage
 
 ## Rodando localmente
 

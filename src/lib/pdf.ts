@@ -10,6 +10,7 @@ import {
   type Measurement,
   type Photo,
   type Profile,
+  type PropertyAssessment,
 } from "./store";
 
 /* ---------- Paleta do documento ---------- */
@@ -340,4 +341,140 @@ export async function generateReportPdf({ insp, photos, measurements, profile }:
   }
 
   doc.save(`relatorio-${insp.code}.pdf`);
+}
+
+export interface EvaluationPdfInput {
+  assessment: PropertyAssessment;
+  profile: Profile;
+  inspection?: Inspection;
+}
+
+/** Exporta uma minuta de avaliação mercadológica com a memória de cálculo dos comparáveis. */
+export function generateEvaluationPdf({ assessment, profile, inspection }: EvaluationPdfInput): void {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const now = new Date().toISOString();
+  const rows = assessment.comparables
+    .filter((c) => c.areaM2 > 0 && c.price > 0)
+    .map((c) => ({ ...c, unit: c.price / c.areaM2, adjusted: (c.price / c.areaM2) * c.locationFactor * c.conservationFactor * c.offerFactor }));
+  const average = rows.length ? rows.reduce((sum, row) => sum + row.adjusted, 0) / rows.length : 0;
+  const estimated = average * assessment.areaM2;
+  const min = rows.length ? Math.min(...rows.map((row) => row.adjusted)) : 0;
+  const max = rows.length ? Math.max(...rows.map((row) => row.adjusted)) : 0;
+  const precision = rows.length >= 5 ? "Boa" : rows.length >= 3 ? "Regular" : "Insuficiente";
+
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, PAGE_W, 26, "F");
+  doc.setFillColor(...AMBER);
+  doc.rect(0, 26, PAGE_W, 1.1, "F");
+  drawMark(doc, 17, 13, 6);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text("PRUMO", 28, 12.4);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.4);
+  doc.setTextColor(178, 197, 224);
+  doc.text("AVALIAÇÃO MERCADOLÓGICA — MINUTA DE MEMÓRIA DE CÁLCULO", 28, 17.2);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("MCDDM", EDGE, 12.5, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.4);
+  doc.setTextColor(178, 197, 224);
+  doc.text(`Emissão: ${fmtDate(now)} ${fmtTime(now)}`, EDGE, 17.2, { align: "right" });
+
+  let y = 38;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(14.5);
+  doc.setTextColor(...INK);
+  doc.text("Parecer técnico de avaliação mercadológica", M, y);
+  y += 8;
+  y = sectionHead(doc, y, "1", "Identificação do imóvel avaliando");
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M, right: M },
+    theme: "plain",
+    styles: { font: "helvetica", fontSize: 9, cellPadding: 1.6, textColor: INK },
+    columnStyles: { 0: { cellWidth: 48, textColor: GRAY }, 1: { fontStyle: "bold" } },
+    body: [
+      ["Finalidade", assessment.purpose],
+      ["Tipo de imóvel", assessment.propertyType],
+      ["Endereço", assessment.address || "—"],
+      ["Município / UF", assessment.city || "—"],
+      ["Área considerada", assessment.areaM2 > 0 ? fmtArea(assessment.areaM2) : "—"],
+      ["Características", `${assessment.bedrooms} dormitório(s) · ${assessment.parking} vaga(s) · Conservação: ${assessment.conservation} · Topografia: ${assessment.topography}`],
+      ["Vistoria vinculada", inspection ? `${inspection.code} — ${inspection.client}` : "Sem vínculo"],
+      ["Responsável", `${profile.name || "Responsável técnico"} — ${profile.title}`],
+      ["Registro", profile.registryNumber ? `${profile.registryLabel} ${profile.registryNumber}` : profile.registryLabel],
+    ],
+  });
+  y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
+
+  y = sectionHead(doc, y, "2", `Amostragem e homogeneização (${rows.length})`);
+  if (!rows.length) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.6);
+    doc.setTextColor(...GRAY);
+    doc.text("Nenhum comparável válido foi cadastrado.", M, y);
+    y += 8;
+  } else {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      theme: "grid",
+      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: "bold" },
+      styles: { font: "helvetica", fontSize: 7.3, cellPadding: 1.7, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
+      alternateRowStyles: { fillColor: [246, 244, 237] },
+      head: [["Comparável", "Fonte / data", "Preço", "Área", "R$/m² homogeneizado"]],
+      body: rows.map((row) => [row.address, `${row.source || "—"} / ${row.date || "—"}`, `R$ ${fmt(row.price)}`, fmtArea(row.areaM2), `R$ ${fmt(row.adjusted)}`]),
+      foot: [[{ content: "Média dos valores unitários homogeneizados", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } }, { content: `R$ ${fmt(average)} / m²`, styles: { fontStyle: "bold" } }]],
+      footStyles: { fillColor: [236, 232, 220], textColor: INK, fontSize: 7.8 },
+    });
+    y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
+  }
+
+  y = sectionHead(doc, y, "3", "Resultado indicativo");
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M, right: M },
+    theme: "plain",
+    styles: { font: "helvetica", fontSize: 10, cellPadding: 2, textColor: INK },
+    columnStyles: { 0: { cellWidth: 75, textColor: GRAY }, 1: { fontStyle: "bold" } },
+    body: [
+      ["Valor indicativo de mercado", `R$ ${fmt(estimated)}`],
+      ["Faixa unitária observada", `R$ ${fmt(min)} a R$ ${fmt(max)} / m²`],
+      ["Precisão preliminar da amostra", precision],
+      ["Quantidade de comparáveis", String(rows.length)],
+    ],
+  });
+  y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
+
+  y = sectionHead(doc, y, "4", "Premissas e ressalvas");
+  const text = assessment.notes || "Registrar as premissas, limitações, fontes e verificações realizadas pelo profissional responsável.";
+  const lines = doc.splitTextToSize(text, EDGE - M) as string[];
+  y = ensurePage(doc, y, lines.length * 4.4 + 20);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...INK);
+  doc.text(lines, M, y);
+  y += lines.length * 4.4 + 14;
+  const disclaimer = "MINUTA: resultado indicativo por média aritmética de valores unitários homogeneizados. A seleção da amostra, os fatores, o intervalo de confiança e o grau de fundamentação/precisão devem ser revisados e complementados pelo profissional habilitado conforme a finalidade do trabalho e as normas aplicáveis.";
+  const disclaimerLines = doc.splitTextToSize(disclaimer, EDGE - M) as string[];
+  y = ensurePage(doc, y, disclaimerLines.length * 3.8 + 10);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(7.8);
+  doc.setTextColor(...GRAY);
+  doc.text(disclaimerLines, M, y);
+
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.2);
+    doc.setTextColor(...GRAY);
+    doc.text(`Documento gerado pelo Prumo em ${fmtDate(now)} às ${fmtTime(now)}.`, PAGE_W / 2, 289, { align: "center" });
+    doc.text(`Página ${i} de ${pages}`, EDGE, 289, { align: "right" });
+  }
+  doc.save(`avaliacao-${assessment.id}.pdf`);
 }

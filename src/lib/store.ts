@@ -2,7 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
 /* ---------- Tipos ---------- */
 
-export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "cadastro" | "config";
+export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "avaliacao" | "cadastro" | "config";
 export type InspStatus = "agendada" | "campo" | "concluida";
 
 export interface Inspection {
@@ -81,6 +81,37 @@ export interface Client {
   doc: string;
   phone: string;
   addedAt: string;
+}
+
+export interface ComparableProperty {
+  id: string;
+  address: string;
+  city: string;
+  source: string;
+  date: string;
+  price: number;
+  areaM2: number;
+  locationFactor: number;
+  conservationFactor: number;
+  offerFactor: number;
+  notes: string;
+}
+
+export interface PropertyAssessment {
+  id: string;
+  inspectionId: string | null;
+  purpose: string;
+  propertyType: string;
+  address: string;
+  city: string;
+  areaM2: number;
+  bedrooms: number;
+  parking: number;
+  conservation: string;
+  topography: string;
+  notes: string;
+  comparables: ComparableProperty[];
+  updatedAt: string;
 }
 
 /* ---------- Constantes de domínio ---------- */

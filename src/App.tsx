@@ -3,6 +3,7 @@ import Dashboard from "./components/Dashboard";
 import Calculator, { type SavePayload } from "./components/Calculator";
 import PhotoField from "./components/PhotoField";
 import Inspections from "./components/Inspections";
+import Evaluation from "./components/Evaluation";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";
 import Settings from "./components/Settings";
@@ -40,6 +41,7 @@ import {
   writeSession,
   type Activity,
   type Client,
+  type PropertyAssessment,
   type Inspection,
   type InspStatus,
   type Measurement,
@@ -65,8 +67,9 @@ const NAV: { id: ViewId; label: string; short: string; index: string; icon: Reac
   { id: "calc", label: "Calculadora", short: "Medidas", index: "02", icon: <IcCalc /> },
   { id: "fotos", label: "Fotos & anotações", short: "Fotos", index: "03", icon: <IcCamera /> },
   { id: "vistorias", label: "Vistorias", short: "Vistorias", index: "04", icon: <IcClip /> },
-  { id: "cadastro", label: "Cadastro do avaliador", short: "Cadastro", index: "05", icon: <IcUser /> },
-  { id: "config", label: "Configurações", short: "Config", index: "06", icon: <IcCog /> },
+  { id: "avaliacao", label: "Avaliação mercadológica", short: "Avaliação", index: "05", icon: <IcCalc /> },
+  { id: "cadastro", label: "Cadastro do avaliador", short: "Cadastro", index: "06", icon: <IcUser /> },
+  { id: "config", label: "Configurações", short: "Config", index: "07", icon: <IcCog /> },
 ];
 
 const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
@@ -74,6 +77,7 @@ const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
   calc: { title: "Calculadora", sub: "medidas & áreas" },
   fotos: { title: "Fotos & anotações", sub: "registro fotográfico" },
   vistorias: { title: "Vistorias", sub: "fichas & relatórios" },
+  avaliacao: { title: "Avaliação", sub: "mercado & homogeneização" },
   cadastro: { title: "Cadastro", sub: "avaliador & vistoriador" },
   config: { title: "Configurações", sub: "acesso & preferências" },
 };
@@ -98,6 +102,7 @@ export default function App() {
   const [photos, setPhotos] = usePersist<Photo[]>("prumo.photos", seedPhotos);
   const [measurements, setMeasurements] = usePersist<Measurement[]>("prumo.measurements", seedMeasurements);
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
+  const [assessments, setAssessments] = usePersist<PropertyAssessment[]>("prumo.assessments", () => []);
 
   /* ---------- autenticação, perfil e vistoriados ---------- */
   const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
@@ -345,6 +350,15 @@ export default function App() {
     [inspections, log, setInspections, toast]
   );
 
+  const saveAssessment = useCallback((assessment: PropertyAssessment) => {
+    setAssessments((prev) => [assessment, ...prev.filter((item) => item.id !== assessment.id)]);
+    log("calc", `Avaliação mercadológica salva para ${assessment.address}`);
+  }, [log, setAssessments]);
+
+  const deleteAssessment = useCallback((id: string) => {
+    setAssessments((prev) => prev.filter((item) => item.id !== id));
+  }, [setAssessments]);
+
   const deleteInspection = useCallback(
     (id: string) => {
       const insp = inspections.find((i) => i.id === id);
@@ -527,6 +541,16 @@ export default function App() {
                 toast={toast}
               />
             )}
+            {view === "avaliacao" && (
+              <Evaluation
+                assessments={assessments}
+                inspections={inspections}
+                profile={profile}
+                onSave={saveAssessment}
+                onDelete={deleteAssessment}
+                toast={toast}
+              />
+            )}
             {view === "cadastro" && <Cadastro profile={profile} onSave={saveProfile} />}
             {view === "config" && (
               <Settings
@@ -542,7 +566,7 @@ export default function App() {
                 canInstall={!!installEvt}
                 installed={installed}
                 onInstall={() => void doInstall()}
-                data={{ inspections, photos, measurements, activity }}
+                data={{ inspections, photos, measurements, activity, assessments }}
                 toast={toast}
               />
             )}
