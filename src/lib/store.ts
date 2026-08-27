@@ -188,6 +188,7 @@ export interface ComparableProperty {
   notes: string;
   savedAt?: string;
   propertyType?: string;
+  excluded?: boolean;
 }
 
 export interface PropertyAssessment {
@@ -320,13 +321,42 @@ export const comparableUnitValue = (comparable: ComparableProperty): number =>
 export const homogenizedUnitValue = (comparable: ComparableProperty): number =>
   comparableUnitValue(comparable) * comparable.locationFactor * comparable.conservationFactor * comparable.offerFactor;
 
+const percentile = (values: number[], p: number): number => {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = (sorted.length - 1) * p;
+  const lower = Math.floor(index);
+  const upper = Math.ceil(index);
+  return sorted[lower] + (sorted[upper] - sorted[lower]) * (index - lower);
+};
+
 export function summarizeAssessment(assessment: PropertyAssessment) {
-  const valid = assessment.comparables.filter((item) => comparableUnitValue(item) > 0);
+  const valid = assessment.comparables.filter((item) => comparableUnitValue(item) > 0 && item.excluded !== true);
   const adjustedValues = valid.map(homogenizedUnitValue);
   const averageUnit = adjustedValues.length ? adjustedValues.reduce((sum, value) => sum + value, 0) / adjustedValues.length : 0;
+  const medianUnit = percentile(adjustedValues, 0.5);
+  const q1Unit = percentile(adjustedValues, 0.25);
+  const q3Unit = percentile(adjustedValues, 0.75);
+  const iqr = q3Unit - q1Unit;
+  const lowerFence = q1Unit - 1.5 * iqr;
+  const upperFence = q3Unit + 1.5 * iqr;
+  const outlierIds = assessment.comparables.filter((item) => {
+    const value = homogenizedUnitValue(item);
+    return comparableUnitValue(item) > 0 && (value < lowerFence || value > upperFence);
+  }).map((item) => item.id);
+  const variance = adjustedValues.length > 1 ? adjustedValues.reduce((sum, value) => sum + (value - averageUnit) ** 2, 0) / (adjustedValues.length - 1) : 0;
+  const standardDeviation = Math.sqrt(variance);
   return {
     validCount: valid.length,
     averageUnit,
+    medianUnit,
+    standardDeviation,
+    coefficientOfVariation: averageUnit > 0 ? (standardDeviation / averageUnit) * 100 : 0,
+    q1Unit,
+    q3Unit,
+    lowerFence,
+    upperFence,
+    outlierIds,
     estimatedValue: averageUnit * assessment.areaM2,
     minUnit: adjustedValues.length ? Math.min(...adjustedValues) : 0,
     maxUnit: adjustedValues.length ? Math.max(...adjustedValues) : 0,
