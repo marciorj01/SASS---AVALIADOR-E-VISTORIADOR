@@ -44,11 +44,13 @@ function ReportSheet({
   photos,
   measurements,
   profile,
+  checklists,
 }: {
   insp: Inspection;
   photos: Photo[];
   measurements: Measurement[];
   profile: Profile;
+  checklists: InspectionChecklist[];
 }) {
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -168,6 +170,12 @@ function ReportSheet({
                     Foto {idx + 1} — {p.caption || "Sem legenda"} <span className="font-normal text-[#6b7a94]">({p.category})</span>
                   </p>
                   <p className="num text-[10px] text-[#6b7a94]">{fmtDate(p.at)} · {fmtTime(p.at)}</p>
+                  {(() => {
+                    const checklist = checklists.find((c) => c.inspectionId === p.inspectionId);
+                    const room = checklist?.rooms.find((r) => r.id === p.roomId);
+                    const item = room?.items.find((i) => i.id === p.checklistItemId);
+                    return <p className="mt-0.5 text-[11px] text-[#6b7a94]">Ambiente: {room?.name ?? "Geral"} · Item: {item?.name ?? "Registro geral"}</p>;
+                  })()}
                   {p.notes.length > 0 && (
                     <ul className="mt-1 list-disc space-y-0.5 pl-5 text-[13px] text-[#42536f]">
                       {p.notes.map((n) => (
@@ -256,7 +264,7 @@ export default function Inspections({
     try {
       /* carregamento sob demanda mantém o app leve na abertura */
       const { generateReportPdf } = await import("../lib/pdf");
-      await generateReportPdf({ insp, photos, measurements, profile });
+      await generateReportPdf({ insp, photos, measurements, profile, checklists });
       toast(`PDF do relatório ${insp.code} salvo.`);
     } catch {
       toast("Não foi possível gerar o PDF neste dispositivo.");
@@ -454,7 +462,7 @@ export default function Inspections({
             ))}
 
           {tab === "relatorio" && (
-            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} />
+            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} />
           )}
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
   fmtDate,
   fmtTime,
   type Inspection,
+  type InspectionChecklist,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -114,9 +115,10 @@ export interface ReportInput {
   photos: Photo[];
   measurements: Measurement[];
   profile: Profile;
+  checklists: InspectionChecklist[];
 }
 
-export async function generateReportPdf({ insp, photos, measurements, profile }: ReportInput): Promise<void> {
+export async function generateReportPdf({ insp, photos, measurements, profile, checklists }: ReportInput): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -237,8 +239,16 @@ export async function generateReportPdf({ insp, photos, measurements, profile }:
         `Foto ${idx + 1} — ${p.caption || "Sem legenda"} (${p.category})`,
         colW - 2
       ) as string[];
+      const checklist = checklists.find((c) => c.inspectionId === p.inspectionId);
+      const room = checklist?.rooms.find((r) => r.id === p.roomId);
+      const item = room?.items.find((i) => i.id === p.checklistItemId);
+      const locationLines = [
+        `Vistoria: ${insp.code}`,
+        `Ambiente: ${room?.name ?? "Geral"}`,
+        `Item: ${item?.name ?? "Registro geral"}`,
+      ].flatMap((line) => doc.splitTextToSize(line, colW - 2) as string[]);
       const noteLines = p.notes.flatMap((n) => doc.splitTextToSize(`• ${n.text}`, colW - 2) as string[]);
-      return { capLines, noteLines, h: imgH + 5 + capLines.length * 3.6 + 3.4 + noteLines.length * 3.4 + 6 };
+      return { capLines, locationLines, noteLines, h: imgH + 5 + capLines.length * 3.6 + locationLines.length * 3.2 + 3.4 + noteLines.length * 3.4 + 6 };
     };
 
     for (let i = 0; i < rPhotos.length; i += 2) {
@@ -254,7 +264,7 @@ export async function generateReportPdf({ insp, photos, measurements, profile }:
 
       const drawBlock = (
         jpeg: { data: string; w: number; h: number } | null,
-        lay: { capLines: string[]; noteLines: string[] },
+        lay: { capLines: string[]; locationLines: string[]; noteLines: string[] },
         x: number,
         p: Photo
       ) => {
@@ -282,7 +292,11 @@ export async function generateReportPdf({ insp, photos, measurements, profile }:
         doc.setFontSize(7);
         doc.setTextColor(...GRAY);
         doc.text(`${fmtDate(p.at)} · ${fmtTime(p.at)}`, x + 1, ty + 0.8);
-        ty += 3.4;
+        ty += 3.2;
+        doc.setFontSize(6.8);
+        doc.setTextColor(...GRAY);
+        doc.text(lay.locationLines, x + 1, ty + 0.8);
+        ty += lay.locationLines.length * 3.2 + 0.2;
         if (lay.noteLines.length > 0) {
           doc.setFontSize(7.8);
           doc.setTextColor(66, 83, 111);
