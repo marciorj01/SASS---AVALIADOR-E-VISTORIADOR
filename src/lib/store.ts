@@ -212,6 +212,26 @@ export const nextCode = (inspections: Inspection[]): string => {
   return `VIS-${year}-${String(max + 1).padStart(3, "0")}`;
 };
 
+export const comparableUnitValue = (comparable: ComparableProperty): number =>
+  comparable.areaM2 > 0 && comparable.price > 0 ? comparable.price / comparable.areaM2 : 0;
+
+export const homogenizedUnitValue = (comparable: ComparableProperty): number =>
+  comparableUnitValue(comparable) * comparable.locationFactor * comparable.conservationFactor * comparable.offerFactor;
+
+export function summarizeAssessment(assessment: PropertyAssessment) {
+  const valid = assessment.comparables.filter((item) => comparableUnitValue(item) > 0);
+  const adjustedValues = valid.map(homogenizedUnitValue);
+  const averageUnit = adjustedValues.length ? adjustedValues.reduce((sum, value) => sum + value, 0) / adjustedValues.length : 0;
+  return {
+    validCount: valid.length,
+    averageUnit,
+    estimatedValue: averageUnit * assessment.areaM2,
+    minUnit: adjustedValues.length ? Math.min(...adjustedValues) : 0,
+    maxUnit: adjustedValues.length ? Math.max(...adjustedValues) : 0,
+    precision: valid.length >= 5 ? "Boa" : valid.length >= 3 ? "Regular" : "Insuficiente",
+  } as const;
+}
+
 /** Comprime imagem capturada/enviada para caber no armazenamento local */
 export const compressImage = (src: string, maxSide = 1400, quality = 0.78): Promise<string> =>
   new Promise((resolve, reject) => {

@@ -4,6 +4,8 @@ import {
   hashPass,
   nextCode,
   parseNum,
+  summarizeAssessment,
+  type ComparableProperty,
   type Inspection,
   writeSession,
   readSession,
@@ -52,6 +54,21 @@ describe("utilitários do Prumo", () => {
     const year = new Date().getFullYear();
     expect(nextCode([inspection(`VIS-${year}-001`), inspection(`VIS-${year}-009`)])).toBe(`VIS-${year}-010`);
     expect(nextCode([])).toBe(`VIS-${year}-001`);
+  });
+
+  it("calcula a homogeneização e a projeção do valor", () => {
+    const comparable: ComparableProperty = {
+      id: "c-1", address: "Rua A", city: "São Paulo / SP", source: "Teste", date: "2026-08-26",
+      price: 500000, areaM2: 100, locationFactor: 1.1, conservationFactor: 0.95, offerFactor: 0.9, notes: "",
+    };
+    const summary = summarizeAssessment({
+      id: "a-1", inspectionId: null, purpose: "Valor de mercado", propertyType: "Residencial",
+      address: "Rua do avaliando", city: "São Paulo / SP", areaM2: 100, bedrooms: 2, parking: 1,
+      conservation: "Bom", topography: "Plano", notes: "", comparables: [comparable], updatedAt: "2026-08-26T00:00:00.000Z",
+    });
+    expect(summary.averageUnit).toBeCloseTo(5000 * 1.1 * 0.95 * 0.9);
+    expect(summary.estimatedValue).toBeCloseTo(summary.averageUnit * 100);
+    expect(summary.precision).toBe("Insuficiente");
   });
 
   it("mantém o hash determinístico sem armazenar a senha em texto puro", () => {

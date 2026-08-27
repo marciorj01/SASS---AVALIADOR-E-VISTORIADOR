@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { fmt, fmtArea, parseNum, uid, type ComparableProperty, type Inspection, type PropertyAssessment } from "../lib/store";
+import { fmt, fmtArea, homogenizedUnitValue, comparableUnitValue, parseNum, summarizeAssessment, uid, type ComparableProperty, type Inspection, type PropertyAssessment } from "../lib/store";
 import { Btn, Field, SectionHead, Select, TextArea, TextInput } from "./ui";
 import { IcCalc, IcCheck, IcClip, IcPlus, IcTrash } from "./icons";
 
@@ -52,15 +52,12 @@ export default function Evaluation({ assessments, inspections, profile, onSave, 
 
   const rows = useMemo(
     () => current.comparables
-      .filter((c) => c.areaM2 > 0 && c.price > 0)
-      .map((c) => ({ ...c, unitValue: c.price / c.areaM2, adjustedUnitValue: (c.price / c.areaM2) * c.locationFactor * c.conservationFactor * c.offerFactor })),
+      .filter((c) => comparableUnitValue(c) > 0)
+      .map((c) => ({ ...c, unitValue: comparableUnitValue(c), adjustedUnitValue: homogenizedUnitValue(c) })),
     [current.comparables]
   );
-  const averageUnit = rows.length ? rows.reduce((sum, row) => sum + row.adjustedUnitValue, 0) / rows.length : 0;
-  const estimatedValue = averageUnit * current.areaM2;
-  const minUnit = rows.length ? Math.min(...rows.map((row) => row.adjustedUnitValue)) : 0;
-  const maxUnit = rows.length ? Math.max(...rows.map((row) => row.adjustedUnitValue)) : 0;
-  const precision = rows.length >= 5 ? "Boa" : rows.length >= 3 ? "Regular" : "Insuficiente";
+  const summary = summarizeAssessment(current);
+  const { averageUnit, estimatedValue, minUnit, maxUnit, precision } = summary;
 
   const update = <K extends keyof PropertyAssessment>(key: K, value: PropertyAssessment[K]) => {
     setCurrent((prev) => ({ ...prev, [key]: value }));

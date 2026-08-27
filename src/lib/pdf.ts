@@ -11,6 +11,9 @@ import {
   type Photo,
   type Profile,
   type PropertyAssessment,
+  comparableUnitValue,
+  homogenizedUnitValue,
+  summarizeAssessment,
 } from "./store";
 
 /* ---------- Paleta do documento ---------- */
@@ -354,13 +357,10 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const now = new Date().toISOString();
   const rows = assessment.comparables
-    .filter((c) => c.areaM2 > 0 && c.price > 0)
-    .map((c) => ({ ...c, unit: c.price / c.areaM2, adjusted: (c.price / c.areaM2) * c.locationFactor * c.conservationFactor * c.offerFactor }));
-  const average = rows.length ? rows.reduce((sum, row) => sum + row.adjusted, 0) / rows.length : 0;
-  const estimated = average * assessment.areaM2;
-  const min = rows.length ? Math.min(...rows.map((row) => row.adjusted)) : 0;
-  const max = rows.length ? Math.max(...rows.map((row) => row.adjusted)) : 0;
-  const precision = rows.length >= 5 ? "Boa" : rows.length >= 3 ? "Regular" : "Insuficiente";
+    .filter((c) => comparableUnitValue(c) > 0)
+    .map((c) => ({ ...c, unit: comparableUnitValue(c), adjusted: homogenizedUnitValue(c) }));
+  const summary = summarizeAssessment(assessment);
+  const { averageUnit: average, estimatedValue: estimated, minUnit: min, maxUnit: max, precision } = summary;
 
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, PAGE_W, 26, "F");
