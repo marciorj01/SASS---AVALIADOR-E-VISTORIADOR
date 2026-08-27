@@ -31,6 +31,7 @@ import {
   seedActivity,
   seedClients,
   seedChecklists,
+  seedFieldLogs,
   seedInspections,
   seedMeasurements,
   seedPhotos,
@@ -43,6 +44,7 @@ import {
   type Activity,
   type Client,
   type InspectionChecklist,
+  type InspectionFieldLog,
   type PropertyAssessment,
   type Inspection,
   type InspStatus,
@@ -102,6 +104,7 @@ export default function App() {
   /* ---------- estado persistente ---------- */
   const [inspections, setInspections] = usePersist<Inspection[]>("prumo.inspections", seedInspections);
   const [checklists, setChecklists] = usePersist<InspectionChecklist[]>("prumo.checklists", seedChecklists);
+  const [fieldLogs, setFieldLogs] = usePersist<InspectionFieldLog[]>("prumo.fieldLogs", seedFieldLogs);
   const [photos, setPhotos] = usePersist<Photo[]>("prumo.photos", seedPhotos);
   const [measurements, setMeasurements] = usePersist<Measurement[]>("prumo.measurements", seedMeasurements);
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
@@ -335,6 +338,10 @@ export default function App() {
     setView("vistorias");
   }, [form, inspections, log, setInspections, toast]);
 
+  const saveChecklist = useCallback((next: InspectionChecklist) => {
+    setChecklists((prev) => [next, ...prev.filter((item) => item.inspectionId !== next.inspectionId)]);
+  }, [setChecklists]);
+
   const setInspStatus = useCallback(
     (id: string, status: InspStatus) => {
       const insp = inspections.find((i) => i.id === id);
@@ -369,11 +376,12 @@ export default function App() {
       setPhotos((prev) => prev.map((p) => (p.inspectionId === id ? { ...p, inspectionId: null } : p)));
       setMeasurements((prev) => prev.map((m) => (m.inspectionId === id ? { ...m, inspectionId: null } : m)));
       setChecklists((prev) => prev.filter((checklist) => checklist.inspectionId !== id));
+      setFieldLogs((prev) => prev.filter((log) => log.inspectionId !== id));
       setSelectedInsp(null);
       log("vistoria", `Vistoria ${insp?.code ?? ""} excluída (fotos e medições foram desvinculadas)`);
       toast("Vistoria excluída. Fotos e medições permanecem no acervo.");
     },
-    [inspections, log, setInspections, setPhotos, setMeasurements, setChecklists, toast]
+    [inspections, log, setInspections, setPhotos, setMeasurements, setChecklists, setFieldLogs, toast]
   );
 
   /* ---------- navegação cruzada ---------- */
@@ -536,7 +544,9 @@ export default function App() {
                 measurements={measurements}
                 profile={profile}
                 checklists={checklists}
-                onSaveChecklist={(next) => setChecklists((prev) => [next, ...prev.filter((item) => item.inspectionId !== next.inspectionId)])}
+                fieldLogs={fieldLogs}
+                onSaveFieldLog={(next) => setFieldLogs((prev) => [next, ...prev.filter((item) => item.inspectionId !== next.inspectionId)])}
+                onSaveChecklist={saveChecklist}
                 selectedId={selectedInsp}
                 onSelect={setSelectedInsp}
                 onSetStatus={setInspStatus}

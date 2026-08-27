@@ -64,6 +64,36 @@ export interface Photo {
   at: string; // ISO
 }
 
+export type InspectionPhase = "entrada" | "saida" | "conferencia";
+export type MeterKind = "agua" | "energia" | "gas";
+export type KeyStatus = "entregue" | "pendente" | "nao_aplicavel";
+
+export interface FieldReading {
+  id: string;
+  kind: MeterKind;
+  meterNumber: string;
+  value: string;
+  unit: string;
+  note: string;
+}
+
+export interface KeyRecord {
+  id: string;
+  label: string;
+  quantity: number;
+  status: KeyStatus;
+  note: string;
+}
+
+export interface InspectionFieldLog {
+  inspectionId: string;
+  phase: InspectionPhase;
+  readings: FieldReading[];
+  keys: KeyRecord[];
+  notes: string;
+  updatedAt: string;
+}
+
 export interface Measurement {
   id: string;
   label: string;
@@ -495,6 +525,7 @@ export const seedInspections = () => SEED.inspections;
 export const seedPhotos = () => SEED.photos;
 export const seedMeasurements = () => SEED.measurements;
 export const seedChecklists = (): InspectionChecklist[] => [];
+export const seedFieldLogs = (): InspectionFieldLog[] => [];
 export const seedActivity = () => SEED.activity;
 export const seedUsers = () => SEED.users;
 export const seedProfile = () => SEED.profile;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Checklist from "./Checklist";
+import FieldLog from "./FieldLog";
 import {
   fmtArea,
   fmtDate,
@@ -7,6 +8,7 @@ import {
   timeAgo,
   type Inspection,
   type InspectionChecklist,
+  type InspectionFieldLog,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -218,7 +220,7 @@ function ReportSheet({
 
 /* ---------- componente principal ---------- */
 
-type Tab = "checklist" | "fotos" | "medicoes" | "relatorio";
+type Tab = "checklist" | "campo" | "fotos" | "medicoes" | "relatorio";
 type StatusFilter = "todas" | InspStatus;
 
 export default function Inspections({
@@ -227,6 +229,8 @@ export default function Inspections({
   measurements,
   profile,
   checklists,
+  fieldLogs,
+  onSaveFieldLog,
   onSaveChecklist,
   selectedId,
   onSelect,
@@ -243,6 +247,8 @@ export default function Inspections({
   measurements: Measurement[];
   profile: Profile;
   checklists: InspectionChecklist[];
+  fieldLogs: InspectionFieldLog[];
+  onSaveFieldLog: (next: InspectionFieldLog) => void;
   onSaveChecklist: (next: InspectionChecklist) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -365,6 +371,7 @@ export default function Inspections({
             onChange={setTab}
             options={[
               { id: "checklist", label: (<><IcCheck width={15} height={15} /> Checklist</>) },
+              { id: "campo", label: (<><IcFlag width={15} height={15} /> Campo</>) },
               { id: "fotos", label: (<><IcCamera width={15} height={15} /> Fotos ({iPhotos.length})</>) },
               { id: "medicoes", label: (<><IcCalc width={15} height={15} /> Medições ({iMeas.length})</>) },
               { id: "relatorio", label: (<><IcPrinter width={15} height={15} /> Relatório</>) },
@@ -397,6 +404,14 @@ export default function Inspections({
               inspection={selected}
               value={checklists.find((item) => item.inspectionId === selected.id)}
               onChange={onSaveChecklist}
+            />
+          )}
+
+          {tab === "campo" && (
+            <FieldLog
+              inspectionId={selected.id}
+              value={fieldLogs.find((item) => item.inspectionId === selected.id)}
+              onChange={onSaveFieldLog}
             />
           )}
 
