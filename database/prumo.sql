@@ -226,8 +226,9 @@ INSERT IGNORE INTO comparison_columns (id, label, enabled, column_order) VALUES
   ('resultado', 'Resultado', 1, 5),
   ('observacoes', 'Observações', 1, 6);
 
--- Verificação rápida após a importação.
-SELECT TABLE_NAME
-FROM information_schema.TABLES
-WHERE TABLE_SCHEMA = 'prumo'
-ORDER BY TABLE_NAME;
+-- Verificação opcional após a importação.
+-- Usa somente o banco selecionado no phpMyAdmin.
+SHOW TABLES;
+SELECT id, label, enabled, column_order
+FROM comparison_columns
+ORDER BY column_order;
