@@ -71,6 +71,27 @@ describe("utilitários do Prumo", () => {
     expect(summary.precision).toBe("Insuficiente");
   });
 
+  it("calcula indicadores estatísticos e respeita exclusão manual", () => {
+    const makeComparable = (id: string, price: number, excluded = false): ComparableProperty => ({
+      id, address: `Rua ${id}`, city: "São Paulo / SP", source: "Teste", date: "2026-08-26",
+      price, areaM2: 100, locationFactor: 1, conservationFactor: 1, offerFactor: 1, notes: "", excluded,
+    });
+    const assessment = {
+      id: "a-stats", inspectionId: null, purpose: "Valor de mercado", propertyType: "Residencial",
+      address: "Rua do avaliando", city: "São Paulo / SP", areaM2: 100, bedrooms: 2, parking: 1,
+      conservation: "Bom", topography: "Plano", notes: "", comparables: [
+        makeComparable("c1", 100000), makeComparable("c2", 110000), makeComparable("c3", 120000), makeComparable("c4", 1000000),
+      ], updatedAt: "2026-08-26T00:00:00.000Z",
+    };
+    const summary = summarizeAssessment(assessment);
+    expect(summary.medianUnit).toBe(1150);
+    expect(summary.outlierIds).toContain("c4");
+    expect(summary.coefficientOfVariation).toBeGreaterThan(0);
+    const withoutOutlier = summarizeAssessment({ ...assessment, comparables: assessment.comparables.map((item) => item.id === "c4" ? { ...item, excluded: true } : item) });
+    expect(withoutOutlier.validCount).toBe(3);
+    expect(withoutOutlier.estimatedValue).toBe(110000);
+  });
+
   it("mantém o hash determinístico sem armazenar a senha em texto puro", () => {
     expect(hashPass("admin")).toBe(hashPass("admin"));
     expect(hashPass("admin")).not.toBe(hashPass("outra senha"));
