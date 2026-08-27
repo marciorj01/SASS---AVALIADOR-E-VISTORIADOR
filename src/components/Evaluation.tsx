@@ -62,6 +62,24 @@ const money = (value: number) => `R$ ${fmt(value, 2)}`;
 export default function Evaluation({ assessments, inspections, library, profile, onSave, onDelete, onSaveLibrary, onDeleteLibrary, toast }: Props) {
   const [current, setCurrent] = useState<PropertyAssessment>(() => assessments[0] ?? emptyAssessment());
   const [draft, setDraft] = useState<ComparableDraft>(emptyComparable);
+  const [libraryCity, setLibraryCity] = useState("");
+  const [libraryType, setLibraryType] = useState("");
+  const [librarySource, setLibrarySource] = useState("");
+  const [libraryFrom, setLibraryFrom] = useState("");
+  const [libraryTo, setLibraryTo] = useState("");
+
+  const libraryOptions = useMemo(() => ({
+    cities: [...new Set(library.map((item) => item.city).filter(Boolean))].sort(),
+    types: [...new Set(library.map((item) => item.propertyType).filter(Boolean))].sort(),
+    sources: [...new Set(library.map((item) => item.source).filter(Boolean))].sort(),
+  }), [library]);
+  const filteredLibrary = useMemo(() => library.filter((item) =>
+    (!libraryCity || item.city === libraryCity) &&
+    (!libraryType || item.propertyType === libraryType) &&
+    (!librarySource || item.source === librarySource) &&
+    (!libraryFrom || item.date >= libraryFrom) &&
+    (!libraryTo || item.date <= libraryTo)
+  ).sort((a, b) => b.date.localeCompare(a.date)), [library, libraryCity, libraryType, librarySource, libraryFrom, libraryTo]);
 
   const rows = useMemo(
     () => current.comparables
@@ -87,7 +105,7 @@ export default function Evaluation({ assessments, inspections, library, profile,
   };
 
   const saveToLibrary = (item: ComparableProperty) => {
-    onSaveLibrary({ ...item, savedAt: new Date().toISOString() });
+    onSaveLibrary({ ...item, propertyType: current.propertyType, savedAt: new Date().toISOString() });
     toast("Comparável salvo na biblioteca.");
   };
 
@@ -150,7 +168,7 @@ export default function Evaluation({ assessments, inspections, library, profile,
 
           <section className="panel p-5 sm:p-6">
             <div className="mb-5"><p className="eyebrow">03 / METODOLOGIA E AMOSTRAGEM</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Adicionar comparável</h2><p className="mt-1 text-xs text-fog-500">Use fatores relativos: 1,00 mantém o preço unitário; 0,90 reduz 10%; 1,10 aumenta 10%.</p></div>
-            {library.length > 0 && <div className="mb-4"><Field label="Reutilizar comparável da biblioteca"><Select defaultValue="" onChange={(e) => { const item = library.find((entry) => entry.id === e.target.value); if (!item) return; const { id: _id, savedAt: _savedAt, ...copy } = item; setDraft(copy); toast("Comparável carregado no formulário."); }}><option value="">Selecione uma amostra salva</option>{library.map((item) => <option key={item.id} value={item.id}>{item.address} · {item.city || "cidade não informada"} · R$ {fmt(item.price)}</option>)}</Select></Field></div>}
+            {library.length > 0 && <div className="mb-4"><Field label="Reutilizar comparável da biblioteca"><Select defaultValue="" onChange={(e) => { const item = library.find((entry) => entry.id === e.target.value); if (!item) return; const { id: _id, savedAt: _savedAt, ...copy } = item; setDraft(copy); toast("Comparável carregado no formulário."); }}><option value="">Selecione uma amostra salva</option>{filteredLibrary.map((item) => <option key={item.id} value={item.id}>{item.address} · {item.city || "cidade não informada"} · R$ {fmt(item.price)}</option>)}</Select></Field></div>}
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Endereço / identificação *"><TextInput value={draft.address} onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))} placeholder="Imóvel ofertado ou vendido" /></Field>
               <Field label="Cidade / UF"><TextInput value={draft.city} onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))} placeholder="Cidade / UF" /></Field>
@@ -184,7 +202,7 @@ export default function Evaluation({ assessments, inspections, library, profile,
             {current.comparables.length === 0 ? <p className="rounded-md border border-dashed border-line p-6 text-center text-sm text-fog-500">Cadastre pelo menos três amostras para uma análise mais consistente.</p> : <div className="space-y-2">{current.comparables.map((c) => { const row = rows.find((r) => r.id === c.id); return <div key={c.id} className="rounded-md border border-line-soft bg-ink-900/50 p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-medium text-fog-100">{c.address}</p><p className="mt-0.5 text-xs text-fog-600">{c.source || "Fonte não informada"} · {fmtArea(c.areaM2)} · {money(c.price)}</p></div><div className="flex items-center gap-2"><button className="text-[10px] uppercase tracking-wider text-brand-300 hover:text-brand-200" onClick={() => saveToLibrary(c)}>Biblioteca</button><button className="text-fog-600 hover:text-danger-400" aria-label="Excluir comparável" onClick={() => setCurrent((prev) => ({ ...prev, comparables: prev.comparables.filter((item) => item.id !== c.id) }))}><IcTrash width={15} height={15} /></button></div></div><div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4"><span className="text-fog-500">R$/m² <strong className="num block text-fog-200">{money(row?.unitValue ?? 0)}</strong></span><span className="text-fog-500">Homog. <strong className="num block text-brand-300">{money(row?.adjustedUnitValue ?? 0)}</strong></span><span className="text-fog-500">Fatores <strong className="num block text-fog-200">{c.locationFactor.toFixed(2)} × {c.conservationFactor.toFixed(2)} × {c.offerFactor.toFixed(2)}</strong></span><span className="text-fog-500">Data <strong className="num block text-fog-200">{c.date || "—"}</strong></span></div></div>; })}</div>}
           </section>
 
-          {library.length > 0 && <section className="panel p-5 sm:p-6"><div className="mb-4"><p className="eyebrow">05 / BIBLIOTECA PRIVADA</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Comparáveis salvos ({library.length})</h2><p className="mt-1 text-xs text-fog-500">Amostras ficam neste dispositivo e podem ser reutilizadas em outras avaliações.</p></div><div className="space-y-2">{library.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border border-line-soft bg-ink-900/50 p-3"><div className="min-w-0"><p className="truncate text-sm text-fog-100">{item.address}</p><p className="text-xs text-fog-600">{item.city || "Cidade não informada"} · {item.source || "Fonte não informada"} · {money(item.price)}</p></div><button className="text-fog-600 hover:text-danger-400" aria-label="Excluir da biblioteca" onClick={() => { onDeleteLibrary(item.id); toast("Comparável removido da biblioteca."); }}><IcTrash width={15} height={15} /></button></div>)}</div></section>}
+          {library.length > 0 && <section className="panel p-5 sm:p-6"><div className="mb-4"><p className="eyebrow">05 / BIBLIOTECA PRIVADA</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Comparáveis salvos ({library.length})</h2><p className="mt-1 text-xs text-fog-500">Amostras ficam neste dispositivo e podem ser reutilizadas em outras avaliações.</p></div><div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5"><Select value={libraryCity} onChange={(e) => setLibraryCity(e.target.value)}><option value="">Todas as cidades</option>{libraryOptions.cities.map((value) => <option key={value} value={value}>{value}</option>)}</Select><Select value={libraryType} onChange={(e) => setLibraryType(e.target.value)}><option value="">Todos os tipos</option>{libraryOptions.types.map((value) => <option key={value} value={value}>{value}</option>)}</Select><Select value={librarySource} onChange={(e) => setLibrarySource(e.target.value)}><option value="">Todas as fontes</option>{libraryOptions.sources.map((value) => <option key={value} value={value}>{value}</option>)}</Select><TextInput type="date" value={libraryFrom} onChange={(e) => setLibraryFrom(e.target.value)} aria-label="Data inicial" placeholder="Data inicial" /><TextInput type="date" value={libraryTo} onChange={(e) => setLibraryTo(e.target.value)} aria-label="Data final" placeholder="Data final" /></div><p className="mb-2 text-xs text-fog-600">{filteredLibrary.length} amostra(s) encontrada(s), ordenadas da mais recente para a mais antiga.</p><div className="space-y-2">{filteredLibrary.map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-md border border-line-soft bg-ink-900/50 p-3"><div className="min-w-0"><p className="truncate text-sm text-fog-100">{item.address}</p><p className="text-xs text-fog-600">{item.city || "Cidade não informada"} · {item.propertyType || "Tipo não informado"} · {item.source || "Fonte não informada"} · {item.date || "Data não informada"} · {money(item.price)}</p></div><button className="text-fog-600 hover:text-danger-400" aria-label="Excluir da biblioteca" onClick={() => { onDeleteLibrary(item.id); toast("Comparável removido da biblioteca."); }}><IcTrash width={15} height={15} /></button></div>)}</div></section>}
 
           <div className="flex flex-wrap justify-end gap-2"><Btn onClick={() => { if (current.id && assessments.some((a) => a.id === current.id)) onDelete(current.id); setCurrent(emptyAssessment()); toast("Avaliação removida."); }} disabled={!assessments.some((a) => a.id === current.id)}><IcTrash width={15} height={15} /> Excluir ficha</Btn><Btn variant="primary" onClick={save}><IcCheck width={15} height={15} /> Salvar avaliação</Btn></div>
         </div>
