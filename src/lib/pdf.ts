@@ -8,6 +8,7 @@ import {
   type Inspection,
   type InspectionChecklist,
   type InspectionFieldLog,
+  type ChecklistDifference,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -118,9 +119,10 @@ export interface ReportInput {
   profile: Profile;
   checklists: InspectionChecklist[];
   fieldLogs: InspectionFieldLog[];
+  comparison?: { reference: Inspection; differences: ChecklistDifference[] };
 }
 
-export async function generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs }: ReportInput): Promise<void> {
+export async function generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs, comparison }: ReportInput): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -279,9 +281,25 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
     }
   }
 
-  /* ---------- 2B. Checklist de vistoria ---------- */
+  /* ---------- 2B. Comparação ---------- */
+  if (comparison && comparison.differences.length > 0) {
+    y = sectionHead(doc, y, "2B", `Comparação com ${comparison.reference.code}`);
+    const changed = comparison.differences.filter((item) => item.status !== "inalterado");
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      theme: "grid",
+      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.6, fontStyle: "bold" },
+      styles: { font: "helvetica", fontSize: 7.4, cellPadding: 1.5, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
+      head: [["Ambiente", "Item", "Referência", "Atual", "Resultado"]],
+      body: changed.map((item) => [item.roomName, item.itemName, item.entryCondition, item.exitCondition, item.status === "pendencia_aberta" ? "Pendência aberta" : item.status === "pendencia_resolvida" ? "Pendência resolvida" : "Alterado"]),
+    });
+    y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 7;
+  }
+
+  /* ---------- 2C. Checklist de vistoria ---------- */
   const checklist = checklists.find((item) => item.inspectionId === insp.id);
-  y = sectionHead(doc, y, "2B", "Checklist de vistoria");
+  y = sectionHead(doc, y, "2C", "Checklist de vistoria");
   const checklistRows = checklist?.rooms.flatMap((room) => room.items.map((item) => [
     room.name,
     item.name,

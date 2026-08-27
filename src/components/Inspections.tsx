@@ -7,6 +7,7 @@ import {
   fmtDate,
   fmtTime,
   timeAgo,
+  compareChecklists,
   type Inspection,
   type InspectionChecklist,
   type InspectionFieldLog,
@@ -49,6 +50,7 @@ function ReportSheet({
   profile,
   checklists,
   fieldLogs,
+  comparisonReference,
 }: {
   insp: Inspection;
   photos: Photo[];
@@ -56,11 +58,13 @@ function ReportSheet({
   profile: Profile;
   checklists: InspectionChecklist[];
   fieldLogs: InspectionFieldLog[];
+  comparisonReference?: Inspection;
 }) {
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
   const fieldLog = fieldLogs.find((item) => item.inspectionId === insp.id);
   const reportChecklist = checklists.find((item) => item.inspectionId === insp.id);
+  const reportComparison = comparisonReference && checklists.find((item) => item.inspectionId === comparisonReference.id) && reportChecklist ? compareChecklists(checklists.find((item) => item.inspectionId === comparisonReference.id)!, reportChecklist) : [];
   const statusLabel: Record<InspStatus, string> = {
     agendada: "Agendada",
     campo: "Em campo",
@@ -164,6 +168,11 @@ function ReportSheet({
       <section className="mt-6">
         <h3 className="num text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6b7a94]">2B · Checklist de vistoria</h3>
         {reportChecklist ? <div className="mt-2 overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-b-2 border-[#22304a] text-left text-[11px] uppercase tracking-wider text-[#6b7a94]"><th className="py-2 pr-3">Ambiente</th><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Condição</th><th className="py-2 pr-3">Pendência</th><th className="py-2">Dano / ação / observação</th></tr></thead><tbody>{reportChecklist.rooms.flatMap((room) => room.items.map((item) => <tr key={item.id} className="border-b border-[#d9d3c2] align-top"><td className="py-1.5 pr-3 font-semibold">{room.name}</td><td className="py-1.5 pr-3">{item.name}</td><td className="py-1.5 pr-3">{item.condition === "nao_verificado" ? "Não verificado" : item.condition === "nao_aplicavel" ? "Não se aplica" : item.condition.charAt(0).toUpperCase() + item.condition.slice(1)}</td><td className="py-1.5 pr-3">{item.pending ? "Pendente" : "—"}</td><td className="py-1.5 text-[#42536f]">{[item.damageType, item.recommendedAction, item.note].filter(Boolean).join(" · ") || "—"}</td></tr>))}</tbody></table></div> : <p className="mt-2 text-sm text-[#6b7a94]">Nenhum checklist salvo para esta vistoria.</p>}
+      </section>
+
+      <section className="mt-6">
+        <h3 className="num text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6b7a94]">2C · Comparação com {comparisonReference?.code ?? "vistoria de referência"}</h3>
+        {reportComparison.length > 0 ? <div className="mt-2 overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-b-2 border-[#22304a] text-left text-[11px] uppercase tracking-wider text-[#6b7a94]"><th className="py-2 pr-3">Ambiente</th><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Referência</th><th className="py-2 pr-3">Atual</th><th className="py-2">Resultado</th></tr></thead><tbody>{reportComparison.filter((item) => item.status !== "inalterado").map((item) => <tr key={item.key} className="border-b border-[#d9d3c2]"><td className="py-1.5 pr-3 font-semibold">{item.roomName}</td><td className="py-1.5 pr-3">{item.itemName}</td><td className="py-1.5 pr-3">{item.entryCondition}</td><td className="py-1.5 pr-3">{item.exitCondition}</td><td className="py-1.5">{item.status === "pendencia_aberta" ? "Pendência aberta" : item.status === "pendencia_resolvida" ? "Pendência resolvida" : "Alterado"}</td></tr>)}</tbody></table></div> : <p className="mt-2 text-sm text-[#6b7a94]">Nenhuma alteração encontrada ou não há vistoria de referência com checklist salvo.</p>}
       </section>
 
       <section className="mt-6">
@@ -285,7 +294,10 @@ export default function Inspections({
     try {
       /* carregamento sob demanda mantém o app leve na abertura */
       const { generateReportPdf } = await import("../lib/pdf");
-      await generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs });
+      const reference = inspections.find((item) => item.id !== insp.id && checklists.some((checklist) => checklist.inspectionId === item.id));
+      const currentChecklist = checklists.find((item) => item.inspectionId === insp.id);
+      const referenceChecklist = reference ? checklists.find((item) => item.inspectionId === reference.id) : undefined;
+      await generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs, comparison: reference && currentChecklist && referenceChecklist ? { reference, differences: compareChecklists(referenceChecklist, currentChecklist) } : undefined });
       toast(`PDF do relatório ${insp.code} salvo.`);
     } catch {
       toast("Não foi possível gerar o PDF neste dispositivo.");
@@ -497,7 +509,7 @@ export default function Inspections({
             ))}
 
           {tab === "relatorio" && (
-            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} fieldLogs={fieldLogs} />
+            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} fieldLogs={fieldLogs} comparisonReference={inspections.find((item) => item.id !== selected.id && checklists.some((checklist) => checklist.inspectionId === item.id))} />
           )}
         </div>
       </div>
