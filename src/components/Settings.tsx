@@ -20,6 +20,7 @@ import {
   uid,
   type Activity,
   type Client,
+  type ComparableProperty,
   type Inspection,
   type InspectionChecklist,
   type InspectionFieldLog,
@@ -43,7 +44,7 @@ interface SettingsProps {
   canInstall: boolean;
   installed: boolean;
   onInstall: () => void;
-  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[] };
+  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[]; comparableLibrary: ComparableProperty[] };
   toast: (t: string) => void;
 }
 
@@ -145,6 +146,7 @@ export default function Settings({
       avaliacoesMercadologicas: data.assessments,
       checklists: data.checklists,
       dadosDeCampo: data.fieldLogs,
+      bibliotecaComparaveis: data.comparableLibrary,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -320,7 +322,7 @@ export default function Settings({
             <PanelHead
               index="D"
               title="Aplicativo & dados"
-              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s) · ${data.checklists.length} checklist(s) · ${data.assessments.length} avaliação(ões).`}
+              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s) · ${data.checklists.length} checklist(s) · ${data.assessments.length} avaliação(ões) · ${data.comparableLibrary.length} comparável(is).`}
               icon={<IcCog width={16} height={16} />}
             />
             <div className="space-y-3">

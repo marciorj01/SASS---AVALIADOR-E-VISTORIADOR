@@ -43,6 +43,7 @@ import {
   writeSession,
   type Activity,
   type Client,
+  type ComparableProperty,
   type InspectionChecklist,
   type InspectionFieldLog,
   type PropertyAssessment,
@@ -109,6 +110,7 @@ export default function App() {
   const [measurements, setMeasurements] = usePersist<Measurement[]>("prumo.measurements", seedMeasurements);
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
   const [assessments, setAssessments] = usePersist<PropertyAssessment[]>("prumo.assessments", () => []);
+  const [comparableLibrary, setComparableLibrary] = usePersist<ComparableProperty[]>("prumo.comparableLibrary", () => []);
 
   /* ---------- autenticação, perfil e vistoriados ---------- */
   const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
@@ -369,6 +371,14 @@ export default function App() {
     setAssessments((prev) => prev.filter((item) => item.id !== id));
   }, [setAssessments]);
 
+  const saveComparableLibrary = useCallback((item: ComparableProperty) => {
+    setComparableLibrary((prev) => [item, ...prev.filter((entry) => entry.id !== item.id)]);
+  }, [setComparableLibrary]);
+
+  const deleteComparableLibrary = useCallback((id: string) => {
+    setComparableLibrary((prev) => prev.filter((item) => item.id !== id));
+  }, [setComparableLibrary]);
+
   const deleteInspection = useCallback(
     (id: string) => {
       const insp = inspections.find((i) => i.id === id);
@@ -563,8 +573,11 @@ export default function App() {
                 assessments={assessments}
                 inspections={inspections}
                 profile={profile}
+                library={comparableLibrary}
                 onSave={saveAssessment}
                 onDelete={deleteAssessment}
+                onSaveLibrary={saveComparableLibrary}
+                onDeleteLibrary={deleteComparableLibrary}
                 toast={toast}
               />
             )}
@@ -583,7 +596,7 @@ export default function App() {
                 canInstall={!!installEvt}
                 installed={installed}
                 onInstall={() => void doInstall()}
-                data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs }}
+                data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs, comparableLibrary }}
                 toast={toast}
               />
             )}

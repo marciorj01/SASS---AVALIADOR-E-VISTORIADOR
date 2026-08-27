@@ -186,6 +186,7 @@ export interface ComparableProperty {
   conservationFactor: number;
   offerFactor: number;
   notes: string;
+  savedAt?: string;
 }
 
 export interface PropertyAssessment {
