@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { AREA_UNITS, fmt, parseNum, type Inspection } from "../lib/store";
 import { Btn, Field, SectionHead, Seg, Select, TextInput } from "./ui";
 import { IcAreaShape, IcCopy, IcHome, IcPlus, IcSwap, IcTrash } from "./icons";
@@ -147,7 +147,16 @@ function SaveBar({
 
 /* ---------- pré-visualização do polígono ---------- */
 
-function PolyPreview({ verts }: { verts: { x: number; y: number }[] }) {
+function PolyPreview({
+  verts,
+  onMoveVertex,
+}: {
+  verts: { x: number; y: number }[];
+  onMoveVertex?: (index: number, x: number, y: number) => void;
+}) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
   if (verts.length < 3) {
     return (
       <div className="flex h-[220px] items-center justify-center rounded-lg border border-dashed border-line text-xs text-fog-600">
@@ -165,8 +174,42 @@ function PolyPreview({ verts }: { verts: { x: number; y: number }[] }) {
   const py = (y: number) => H - pad - ((y - minY) / spanY) * (H - 2 * pad);
   const pts = verts.map((v) => `${px(v.x).toFixed(1)},${py(v.y).toFixed(1)}`).join(" ");
 
+  const moveFromPointer = (event: PointerEvent<SVGSVGElement>) => {
+    if (dragIndex === null || !onMoveVertex || !svgRef.current) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const viewX = ((event.clientX - rect.left) / rect.width) * W;
+    const viewY = ((event.clientY - rect.top) / rect.height) * H;
+    const nextX = minX + ((viewX - pad) / (W - 2 * pad)) * spanX;
+    const nextY = minY + ((H - pad - viewY) / (H - 2 * pad)) * spanY;
+    onMoveVertex(dragIndex, nextX, nextY);
+  };
+
+  const startDrag = (event: PointerEvent<SVGCircleElement>, index: number) => {
+    if (!onMoveVertex) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragIndex(index);
+  };
+
+  const endDrag = (event: PointerEvent<SVGSVGElement>) => {
+    if (dragIndex !== null) {
+      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* captura já liberada */ }
+    }
+    setDragIndex(null);
+  };
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-lg border border-line-soft bg-ink-950/70">
+    <div className="space-y-2">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full rounded-lg border border-line-soft bg-ink-950/70"
+        style={{ touchAction: "none", cursor: dragIndex === null ? "default" : "grabbing" }}
+        onPointerMove={moveFromPointer}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
       <defs>
         <pattern id="pgrid" width="20" height="20" patternUnits="userSpaceOnUse">
           <path d="M20 0H0v20" fill="none" stroke="rgba(86,200,238,.08)" strokeWidth="1" />
@@ -176,7 +219,26 @@ function PolyPreview({ verts }: { verts: { x: number; y: number }[] }) {
       <polygon points={pts} fill="rgba(86,200,238,.13)" stroke="#56c8ee" strokeWidth="1.8" strokeLinejoin="round" />
       {verts.map((v, i) => (
         <g key={i}>
-          <circle cx={px(v.x)} cy={py(v.y)} r="4" fill="#0a111f" stroke="#ffb224" strokeWidth="1.6" />
+          <circle
+            cx={px(v.x)}
+            cy={py(v.y)}
+            r={dragIndex === i ? 7 : 6}
+            fill={dragIndex === i ? "#ffb224" : "#0a111f"}
+            stroke="#ffb224"
+            strokeWidth="1.6"
+            role="slider"
+            tabIndex={0}
+            aria-label={`Vértice ${i + 1}: ${fmt(v.x, 2)} metros por ${fmt(v.y, 2)} metros`}
+            onPointerDown={(event) => startDrag(event, i)}
+            onKeyDown={(event) => {
+              if (!onMoveVertex) return;
+              const step = event.shiftKey ? 1 : 0.1;
+              if (event.key === "ArrowLeft") onMoveVertex(i, v.x - step, v.y);
+              if (event.key === "ArrowRight") onMoveVertex(i, v.x + step, v.y);
+              if (event.key === "ArrowUp") onMoveVertex(i, v.x, v.y + step);
+              if (event.key === "ArrowDown") onMoveVertex(i, v.x, v.y - step);
+            }}
+          />
           <text
             x={px(v.x) + 8}
             y={py(v.y) - 8}
@@ -188,7 +250,13 @@ function PolyPreview({ verts }: { verts: { x: number; y: number }[] }) {
           </text>
         </g>
       ))}
-    </svg>
+      </svg>
+      {onMoveVertex && (
+        <p className="text-[11px] text-fog-600">
+          Arraste as bolinhas amarelas com o mouse ou toque e mova com o dedo. Os campos X e Y continuam disponíveis para ajuste preciso.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -543,7 +611,15 @@ export default function Calculator({
           >
             <IcPlus width={15} height={15} /> Adicionar vértice
           </Btn>
-          <PolyPreview verts={poly.pts} />
+          <PolyPreview
+            verts={poly.pts}
+            onMoveVertex={(index, x, y) => {
+              const asInput = (value: number) => String(Number(value.toFixed(2))).replace(".", ",");
+              setVerts((old) => old.map((vertex, vertexIndex) => (
+                vertexIndex === index ? { x: asInput(x), y: asInput(y) } : vertex
+              )));
+            }}
+          />
           {!poly.valid && (
             <p className="text-[11px] text-fog-600">A área é calculada pela fórmula de Gauss (shoelace) com no mínimo 3 vértices.</p>
           )}
