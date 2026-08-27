@@ -27,6 +27,7 @@ Thumbs.db
 *.sw?
 
 # Ambiente
+api/config.php
 .env
 .env.*
 !.env.example
