@@ -530,6 +530,35 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
 
+  y = sectionHead(doc, y, "1A", "Partes, documentação e metodologia");
+  autoTable(doc, {
+    startY: y,
+    margin: { left: M, right: M },
+    theme: "plain",
+    styles: { font: "helvetica", fontSize: 8.8, cellPadding: 1.6, textColor: INK },
+    columnStyles: { 0: { cellWidth: 58, textColor: GRAY }, 1: { fontStyle: "bold" } },
+    body: [
+      ["Solicitante / contratante", assessment.requester || "—"],
+      ["Proprietário / interessado", assessment.owner || "—"],
+      ["Matrícula / inscrição / referência", assessment.documentReference || "—"],
+      ["Cartório / órgão / fonte documental", assessment.registrationOffice || "—"],
+      ["Data da vistoria", assessment.inspectionDate ? fmtDate(assessment.inspectionDate) : "—"],
+      ["Data de referência do valor", assessment.referenceDate ? fmtDate(assessment.referenceDate) : "—"],
+      ["Metodologia", assessment.methodology || "—"],
+    ],
+  });
+  y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 6;
+  const sourceLines = doc.splitTextToSize(`Fontes documentais e de mercado: ${assessment.sourceNotes || "—"}`, EDGE - M) as string[];
+  const limitationLines = doc.splitTextToSize(`Limitações e ressalvas: ${assessment.limitations || "—"}`, EDGE - M) as string[];
+  y = ensurePage(doc, y, (sourceLines.length + limitationLines.length) * 3.8 + 8);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.4);
+  doc.setTextColor(...GRAY);
+  doc.text(sourceLines, M, y);
+  y += sourceLines.length * 3.8 + 3;
+  doc.text(limitationLines, M, y);
+  y += limitationLines.length * 3.8 + 7;
+
   y = sectionHead(doc, y, "2", `Amostragem e homogeneização (${rows.length})`);
   if (!rows.length) {
     doc.setFont("helvetica", "italic");
@@ -570,7 +599,7 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
 
   y = sectionHead(doc, y, "4", "Premissas e ressalvas");
-  const text = assessment.notes || "Registrar as premissas, limitações, fontes e verificações realizadas pelo profissional responsável.";
+  const text = [assessment.notes, assessment.sourceNotes ? `Fontes: ${assessment.sourceNotes}` : "", assessment.limitations ? `Limitações: ${assessment.limitations}` : ""].filter(Boolean).join("\n\n") || "Registrar as premissas, limitações, fontes e verificações realizadas pelo profissional responsável.";
   const lines = doc.splitTextToSize(text, EDGE - M) as string[];
   y = ensurePage(doc, y, lines.length * 4.4 + 20);
   doc.setFont("helvetica", "normal");
