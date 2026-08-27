@@ -479,7 +479,7 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
     .filter((c) => comparableUnitValue(c) > 0)
     .map((c) => ({ ...c, unit: comparableUnitValue(c), adjusted: homogenizedUnitValue(c) }));
   const summary = summarizeAssessment(assessment);
-  const { averageUnit: average, estimatedValue: estimated, minUnit: min, maxUnit: max, precision } = summary;
+  const { averageUnit: average, estimatedValue: estimated, minUnit: min, maxUnit: max, precision, medianUnit: median, standardDeviation, coefficientOfVariation, outlierIds } = summary;
 
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, PAGE_W, 26, "F");
@@ -574,9 +574,9 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
       headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.5, fontStyle: "bold" },
       styles: { font: "helvetica", fontSize: 7.3, cellPadding: 1.7, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
       alternateRowStyles: { fillColor: [246, 244, 237] },
-      head: [["Comparável", "Fonte / data", "Preço", "Área", "R$/m² homogeneizado"]],
-      body: rows.map((row) => [row.address, `${row.source || "—"} / ${row.date || "—"}`, `R$ ${fmt(row.price)}`, fmtArea(row.areaM2), `R$ ${fmt(row.adjusted)}`]),
-      foot: [[{ content: "Média dos valores unitários homogeneizados", colSpan: 4, styles: { halign: "right", fontStyle: "bold" } }, { content: `R$ ${fmt(average)} / m²`, styles: { fontStyle: "bold" } }]],
+      head: [["Comparável", "Fonte / data", "Preço", "Área", "R$/m² homog.", "Uso"]],
+      body: rows.map((row) => [row.address, `${row.source || "—"} / ${row.date || "—"}`, `R$ ${fmt(row.price)}`, fmtArea(row.areaM2), `R$ ${fmt(row.adjusted)}`, row.excluded ? "Fora da média" : outlierIds.includes(row.id) ? "Atípico sugerido" : "Incluído"]),
+      foot: [[{ content: "Média dos valores unitários homogeneizados", colSpan: 5, styles: { halign: "right", fontStyle: "bold" } }, { content: `R$ ${fmt(average)} / m²`, styles: { fontStyle: "bold" } }]],
       footStyles: { fillColor: [236, 232, 220], textColor: INK, fontSize: 7.8 },
     });
     y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
@@ -593,7 +593,12 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
       ["Valor indicativo de mercado", `R$ ${fmt(estimated)}`],
       ["Faixa unitária observada", `R$ ${fmt(min)} a R$ ${fmt(max)} / m²`],
       ["Precisão preliminar da amostra", precision],
-      ["Quantidade de comparáveis", String(rows.length)],
+      ["Quantidade de comparáveis cadastrados", String(rows.length)],
+      ["Comparáveis utilizados na média", String(summary.validCount)],
+      ["Mediana unitária", `R$ ${fmt(median)} / m²`],
+      ["Desvio padrão", `R$ ${fmt(standardDeviation)} / m²`],
+      ["Coeficiente de variação", `${coefficientOfVariation.toFixed(1)}%`],
+      ["Atípicos sugeridos pelo IQR", String(outlierIds.length)],
     ],
   });
   y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
@@ -607,7 +612,7 @@ export function generateEvaluationPdf({ assessment, profile, inspection }: Evalu
   doc.setTextColor(...INK);
   doc.text(lines, M, y);
   y += lines.length * 4.4 + 14;
-  const disclaimer = "MINUTA: resultado indicativo por média aritmética de valores unitários homogeneizados. A seleção da amostra, os fatores, o intervalo de confiança e o grau de fundamentação/precisão devem ser revisados e complementados pelo profissional habilitado conforme a finalidade do trabalho e as normas aplicáveis.";
+  const disclaimer = "MINUTA: resultado indicativo por média aritmética de valores unitários homogeneizados. Os valores atípicos são apenas sinalizados pelo critério IQR e qualquer exclusão deve ser decidida e justificada pelo profissional habilitado. A seleção da amostra, os fatores, o intervalo de confiança e o grau de fundamentação/precisão devem ser revisados e complementados conforme a finalidade do trabalho e as normas aplicáveis.";
   const disclaimerLines = doc.splitTextToSize(disclaimer, EDGE - M) as string[];
   y = ensurePage(doc, y, disclaimerLines.length * 3.8 + 10);
   doc.setFont("helvetica", "italic");
