@@ -150,9 +150,11 @@ function SaveBar({
 function PolyPreview({
   verts,
   onMoveVertex,
+  onInsertVertex,
 }: {
   verts: { x: number; y: number }[];
   onMoveVertex?: (index: number, x: number, y: number) => void;
+  onInsertVertex?: (index: number, x: number, y: number) => void;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -174,14 +176,44 @@ function PolyPreview({
   const py = (y: number) => H - pad - ((y - minY) / spanY) * (H - 2 * pad);
   const pts = verts.map((v) => `${px(v.x).toFixed(1)},${py(v.y).toFixed(1)}`).join(" ");
 
+  const pointerToView = (event: { clientX: number; clientY: number }) => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return null;
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * W,
+      y: ((event.clientY - rect.top) / rect.height) * H,
+    };
+  };
+
+  const viewToData = (viewX: number, viewY: number) => ({
+    x: minX + ((viewX - pad) / (W - 2 * pad)) * spanX,
+    y: minY + ((H - pad - viewY) / (H - 2 * pad)) * spanY,
+  });
+
   const moveFromPointer = (event: PointerEvent<SVGSVGElement>) => {
-    if (dragIndex === null || !onMoveVertex || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const viewX = ((event.clientX - rect.left) / rect.width) * W;
-    const viewY = ((event.clientY - rect.top) / rect.height) * H;
-    const nextX = minX + ((viewX - pad) / (W - 2 * pad)) * spanX;
-    const nextY = minY + ((H - pad - viewY) / (H - 2 * pad)) * spanY;
-    onMoveVertex(dragIndex, nextX, nextY);
+    if (dragIndex === null || !onMoveVertex) return;
+    const view = pointerToView(event);
+    if (!view) return;
+    const next = viewToData(view.x, view.y);
+    onMoveVertex(dragIndex, next.x, next.y);
+  };
+
+  const insertOnSegment = (event: PointerEvent<SVGPolylineElement>, segmentIndex: number) => {
+    if (!onInsertVertex) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const view = pointerToView(event);
+    if (!view) return;
+
+    const start = verts[segmentIndex];
+    const end = verts[(segmentIndex + 1) % verts.length];
+    const ax = px(start.x), ay = py(start.y);
+    const bx = px(end.x), by = py(end.y);
+    const dx = bx - ax, dy = by - ay;
+    const lengthSquared = dx * dx + dy * dy || 1;
+    const t = Math.max(0, Math.min(1, ((view.x - ax) * dx + (view.y - ay) * dy) / lengthSquared));
+    const next = viewToData(ax + t * dx, ay + t * dy);
+    onInsertVertex(segmentIndex + 1, next.x, next.y);
   };
 
   const startDrag = (event: PointerEvent<SVGCircleElement>, index: number) => {
@@ -217,6 +249,19 @@ function PolyPreview({
       </defs>
       <rect width={W} height={H} fill="url(#pgrid)" />
       <polygon points={pts} fill="rgba(86,200,238,.13)" stroke="#56c8ee" strokeWidth="1.8" strokeLinejoin="round" />
+      {onInsertVertex && verts.map((_, i) => (
+        <polyline
+          key={`segment-${i}`}
+          points={`${px(verts[i].x)},${py(verts[i].y)} ${px(verts[(i + 1) % verts.length].x)},${py(verts[(i + 1) % verts.length].y)}`}
+          fill="none"
+          stroke="transparent"
+          strokeWidth="18"
+          strokeLinecap="round"
+          pointerEvents="stroke"
+          onPointerDown={(event) => insertOnSegment(event, i)}
+          aria-label={`Inserir vértice depois de V${i + 1}`}
+        />
+      ))}
       {verts.map((v, i) => (
         <g key={i}>
           <circle
@@ -253,7 +298,7 @@ function PolyPreview({
       </svg>
       {onMoveVertex && (
         <p className="text-[11px] text-fog-600">
-          Arraste as bolinhas amarelas com o mouse ou toque e mova com o dedo. Os campos X e Y continuam disponíveis para ajuste preciso.
+          Arraste as bolinhas amarelas para mover. Clique ou toque em qualquer trecho da linha para inserir um novo vértice; os campos X e Y continuam disponíveis para ajuste preciso.
         </p>
       )}
     </div>
@@ -618,6 +663,14 @@ export default function Calculator({
               setVerts((old) => old.map((vertex, vertexIndex) => (
                 vertexIndex === index ? { x: asInput(x), y: asInput(y) } : vertex
               )));
+            }}
+            onInsertVertex={(index, x, y) => {
+              const asInput = (value: number) => String(Number(value.toFixed(2))).replace(".", ",");
+              setVerts((old) => [
+                ...old.slice(0, index),
+                { x: asInput(x), y: asInput(y) },
+                ...old.slice(index),
+              ]);
             }}
           />
           {!poly.valid && (
