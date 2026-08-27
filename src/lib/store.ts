@@ -27,6 +27,8 @@ export interface ChecklistItem {
   severity: ChecklistSeverity;
   note: string;
   pending: boolean;
+  damageType?: string;
+  recommendedAction?: string;
   updatedAt: string;
 }
 
