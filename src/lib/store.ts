@@ -4,6 +4,9 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
 export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "avaliacao" | "cadastro" | "config";
 export type InspStatus = "agendada" | "campo" | "concluida";
+export type ChecklistCondition = "nao_verificado" | "novo" | "bom" | "regular" | "desgastado" | "danificado" | "inexistente" | "nao_aplicavel";
+export type ChecklistSeverity = "info" | "atencao" | "critico";
+
 
 export interface Inspection {
   id: string;
@@ -15,6 +18,30 @@ export interface Inspection {
   status: InspStatus;
   date: string; // ISO (data da vistoria)
   notes: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  name: string;
+  condition: ChecklistCondition;
+  severity: ChecklistSeverity;
+  note: string;
+  pending: boolean;
+  updatedAt: string;
+}
+
+export interface ChecklistRoom {
+  id: string;
+  name: string;
+  items: ChecklistItem[];
+  order: number;
+}
+
+export interface InspectionChecklist {
+  inspectionId: string;
+  template: string;
+  rooms: ChecklistRoom[];
+  updatedAt: string;
 }
 
 export interface PhotoNote {
@@ -463,6 +490,7 @@ const SEED = buildSeed();
 export const seedInspections = () => SEED.inspections;
 export const seedPhotos = () => SEED.photos;
 export const seedMeasurements = () => SEED.measurements;
+export const seedChecklists = (): InspectionChecklist[] => [];
 export const seedActivity = () => SEED.activity;
 export const seedUsers = () => SEED.users;
 export const seedProfile = () => SEED.profile;

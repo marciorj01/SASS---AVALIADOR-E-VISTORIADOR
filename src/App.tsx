@@ -30,6 +30,7 @@ import {
   readSession,
   seedActivity,
   seedClients,
+  seedChecklists,
   seedInspections,
   seedMeasurements,
   seedPhotos,
@@ -41,6 +42,7 @@ import {
   writeSession,
   type Activity,
   type Client,
+  type InspectionChecklist,
   type PropertyAssessment,
   type Inspection,
   type InspStatus,
@@ -99,6 +101,7 @@ function TopClock() {
 export default function App() {
   /* ---------- estado persistente ---------- */
   const [inspections, setInspections] = usePersist<Inspection[]>("prumo.inspections", seedInspections);
+  const [checklists, setChecklists] = usePersist<InspectionChecklist[]>("prumo.checklists", seedChecklists);
   const [photos, setPhotos] = usePersist<Photo[]>("prumo.photos", seedPhotos);
   const [measurements, setMeasurements] = usePersist<Measurement[]>("prumo.measurements", seedMeasurements);
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
@@ -365,11 +368,12 @@ export default function App() {
       setInspections((prev) => prev.filter((i) => i.id !== id));
       setPhotos((prev) => prev.map((p) => (p.inspectionId === id ? { ...p, inspectionId: null } : p)));
       setMeasurements((prev) => prev.map((m) => (m.inspectionId === id ? { ...m, inspectionId: null } : m)));
+      setChecklists((prev) => prev.filter((checklist) => checklist.inspectionId !== id));
       setSelectedInsp(null);
       log("vistoria", `Vistoria ${insp?.code ?? ""} excluída (fotos e medições foram desvinculadas)`);
       toast("Vistoria excluída. Fotos e medições permanecem no acervo.");
     },
-    [inspections, log, setInspections, setPhotos, setMeasurements, toast]
+    [inspections, log, setInspections, setPhotos, setMeasurements, setChecklists, toast]
   );
 
   /* ---------- navegação cruzada ---------- */
@@ -530,6 +534,8 @@ export default function App() {
                 photos={photos}
                 measurements={measurements}
                 profile={profile}
+                checklists={checklists}
+                onSaveChecklist={(next) => setChecklists((prev) => [next, ...prev.filter((item) => item.inspectionId !== next.inspectionId)])}
                 selectedId={selectedInsp}
                 onSelect={setSelectedInsp}
                 onSetStatus={setInspStatus}
@@ -566,7 +572,7 @@ export default function App() {
                 canInstall={!!installEvt}
                 installed={installed}
                 onInstall={() => void doInstall()}
-                data={{ inspections, photos, measurements, activity, assessments }}
+                data={{ inspections, photos, measurements, activity, assessments, checklists }}
                 toast={toast}
               />
             )}

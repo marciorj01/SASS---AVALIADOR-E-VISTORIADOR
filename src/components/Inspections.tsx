@@ -1,10 +1,12 @@
 import { useState } from "react";
+import Checklist from "./Checklist";
 import {
   fmtArea,
   fmtDate,
   fmtTime,
   timeAgo,
   type Inspection,
+  type InspectionChecklist,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -208,7 +210,7 @@ function ReportSheet({
 
 /* ---------- componente principal ---------- */
 
-type Tab = "fotos" | "medicoes" | "relatorio";
+type Tab = "checklist" | "fotos" | "medicoes" | "relatorio";
 type StatusFilter = "todas" | InspStatus;
 
 export default function Inspections({
@@ -216,6 +218,8 @@ export default function Inspections({
   photos,
   measurements,
   profile,
+  checklists,
+  onSaveChecklist,
   selectedId,
   onSelect,
   onSetStatus,
@@ -230,6 +234,8 @@ export default function Inspections({
   photos: Photo[];
   measurements: Measurement[];
   profile: Profile;
+  checklists: InspectionChecklist[];
+  onSaveChecklist: (next: InspectionChecklist) => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onSetStatus: (id: string, status: InspStatus) => void;
@@ -350,6 +356,7 @@ export default function Inspections({
             value={tab}
             onChange={setTab}
             options={[
+              { id: "checklist", label: (<><IcCheck width={15} height={15} /> Checklist</>) },
               { id: "fotos", label: (<><IcCamera width={15} height={15} /> Fotos ({iPhotos.length})</>) },
               { id: "medicoes", label: (<><IcCalc width={15} height={15} /> Medições ({iMeas.length})</>) },
               { id: "relatorio", label: (<><IcPrinter width={15} height={15} /> Relatório</>) },
@@ -377,6 +384,14 @@ export default function Inspections({
         </div>
 
         <div className="mt-4">
+          {tab === "checklist" && (
+            <Checklist
+              inspection={selected}
+              value={checklists.find((item) => item.inspectionId === selected.id)}
+              onChange={onSaveChecklist}
+            />
+          )}
+
           {tab === "fotos" &&
             (iPhotos.length === 0 ? (
               <div className="panel">

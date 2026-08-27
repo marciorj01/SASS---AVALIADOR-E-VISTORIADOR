@@ -21,6 +21,7 @@ import {
   type Activity,
   type Client,
   type Inspection,
+  type InspectionChecklist,
   type Measurement,
   type Photo,
   type Profile,
@@ -41,7 +42,7 @@ interface SettingsProps {
   canInstall: boolean;
   installed: boolean;
   onInstall: () => void;
-  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[] };
+  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[] };
   toast: (t: string) => void;
 }
 
@@ -141,6 +142,7 @@ export default function Settings({
       fotos: data.photos,
       atividade: data.activity,
       avaliacoesMercadologicas: data.assessments,
+      checklists: data.checklists,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -316,7 +318,7 @@ export default function Settings({
             <PanelHead
               index="D"
               title="Aplicativo & dados"
-              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s) · ${data.assessments.length} avaliação(ões).`}
+              sub={`Uso do armazenamento local: ~${storageKB} KB · ${data.photos.length} foto(s) · ${data.inspections.length} vistoria(s) · ${data.checklists.length} checklist(s) · ${data.assessments.length} avaliação(ões).`}
               icon={<IcCog width={16} height={16} />}
             />
             <div className="space-y-3">
@@ -343,7 +345,7 @@ export default function Settings({
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-line-soft bg-ink-850/70 px-3.5 py-3">
                 <div>
                   <p className="text-sm font-semibold text-fog-100">Backup dos dados de campo</p>
-                  <p className="text-[12px] text-fog-500">Exporta vistorias, medições, fotos e anotações em arquivo JSON.</p>
+                  <p className="text-[12px] text-fog-500">Exporta vistorias, checklists, medições, fotos e anotações em arquivo JSON.</p>
                 </div>
                 <Btn variant="soft" onClick={exportJson}>
                   <IcDownload width={15} height={15} /> Exportar JSON
