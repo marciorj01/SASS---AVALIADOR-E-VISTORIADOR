@@ -10,6 +10,8 @@ import {
   writeSession,
   readSession,
   clearSession,
+  compareChecklists,
+  type InspectionChecklist,
 } from "./store";
 
 const makeStorage = (): Storage => {
@@ -90,6 +92,18 @@ describe("utilitários do Prumo", () => {
     const withoutOutlier = summarizeAssessment({ ...assessment, comparables: assessment.comparables.map((item) => item.id === "c4" ? { ...item, excluded: true } : item) });
     expect(withoutOutlier.validCount).toBe(3);
     expect(withoutOutlier.estimatedValue).toBe(110000);
+  });
+
+  it("compara checklists e preserva pendências, observações e campos personalizados", () => {
+    const makeChecklist = (condition: InspectionChecklist["rooms"][number]["items"][number]["condition"], pending: boolean, note: string, customValues: Record<string, string>): InspectionChecklist => ({
+      inspectionId: "insp", template: "Teste", updatedAt: "2026-08-26", rooms: [{ id: "room", name: "Sala", order: 0, items: [{ id: "item", name: "Pintura", condition, severity: "info", pending, note, customValues, updatedAt: "2026-08-26" }] }],
+    });
+    const entry = makeChecklist("bom", true, "Sem marcas na entrada", { responsible: "Proprietário" });
+    const exit = makeChecklist("regular", false, "Marcas identificadas na saída", { responsible: "Manutenção" });
+    const [difference] = compareChecklists(entry, exit);
+    expect(difference.status).toBe("pendencia_resolvida");
+    expect(difference.entryNote).toContain("entrada");
+    expect(difference.exitCustomValues.responsible).toBe("Manutenção");
   });
 
   it("mantém o hash determinístico sem armazenar a senha em texto puro", () => {
