@@ -279,6 +279,36 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
     }
   }
 
+  /* ---------- 2B. Checklist de vistoria ---------- */
+  const checklist = checklists.find((item) => item.inspectionId === insp.id);
+  y = sectionHead(doc, y, "2B", "Checklist de vistoria");
+  const checklistRows = checklist?.rooms.flatMap((room) => room.items.map((item) => [
+    room.name,
+    item.name,
+    item.condition === "nao_verificado" ? "Não verificado" : item.condition === "nao_aplicavel" ? "Não se aplica" : item.condition.charAt(0).toUpperCase() + item.condition.slice(1),
+    item.pending ? "Pendente" : "—",
+    [item.damageType, item.recommendedAction, item.note].filter(Boolean).join(" · ") || "—",
+  ])) ?? [];
+  if (checklistRows.length === 0) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.6);
+    doc.setTextColor(...GRAY);
+    doc.text("Nenhum checklist salvo para esta vistoria.", M, y);
+    y += 8;
+  } else {
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      theme: "grid",
+      headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.6, fontStyle: "bold" },
+      styles: { font: "helvetica", fontSize: 7.4, cellPadding: 1.5, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
+      head: [["Ambiente", "Item", "Condição", "Pendência", "Dano / ação / observação"]],
+      body: checklistRows,
+      columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 38 }, 2: { cellWidth: 27 }, 3: { cellWidth: 22 } },
+    });
+    y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 7;
+  }
+
   /* ---------- 3. Registro fotográfico ---------- */
   y = sectionHead(doc, y, "3", `Registro fotográfico (${rPhotos.length})`);
   if (rPhotos.length === 0) {
