@@ -217,6 +217,17 @@ CREATE TABLE IF NOT EXISTS activities (
   occurred_at DATETIME NOT NULL
 ) ENGINE=InnoDB;
 
+-- Primeiro estágio de sincronização: guarda uma cópia íntegra do backup.
+-- A aplicação relacional será feita depois, após validar o fluxo de restauração.
+CREATE TABLE IF NOT EXISTS sync_snapshots (
+  id CHAR(64) PRIMARY KEY,
+  payload_json LONGTEXT NOT NULL,
+  payload_hash CHAR(64) NOT NULL UNIQUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  source VARCHAR(40) NOT NULL DEFAULT 'prumo-offline',
+  INDEX idx_snapshots_created_at (created_at)
+) ENGINE=InnoDB;
+
 -- Colunas padrão para uma instalação nova.
 INSERT IGNORE INTO comparison_columns (id, label, enabled, column_order) VALUES
   ('ambiente', 'Ambiente', 1, 1),

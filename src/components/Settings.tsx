@@ -109,6 +109,7 @@ export default function Settings({
   /* ---------- segurança ---------- */
   const [sec, setSec] = useState({ cur: "", next: "", confirm: "" });
   const [customColumnLabel, setCustomColumnLabel] = useState("");
+  const [syncing, setSyncing] = useState(false);
   const [secMsg, setSecMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const addComparisonColumn = (e: FormEvent) => {
@@ -149,8 +150,8 @@ export default function Settings({
     }
   }, [data]);
 
-  const exportJson = () => {
-    const payload = {
+  const buildBackupPayload = () => {
+    return {
       sistema: "Prumo — Vistoria & Avaliação de Imóveis",
       exportadoEm: new Date().toISOString(),
       avaliador: profile,
@@ -165,6 +166,10 @@ export default function Settings({
       bibliotecaComparaveis: data.comparableLibrary,
       colunasComparativo: comparisonColumns,
     };
+  };
+
+  const exportJson = () => {
+    const payload = buildBackupPayload();
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -173,6 +178,25 @@ export default function Settings({
     a.click();
     URL.revokeObjectURL(url);
     toast("Backup exportado em JSON.");
+  };
+
+  const syncMySql = async () => {
+    if (!online) {
+      toast("Conecte-se à rede para enviar o backup ao MySQL.");
+      return;
+    }
+    setSyncing(true);
+    try {
+      const response = await fetch("api/sync.php", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(buildBackupPayload()) });
+      const result = await response.json() as { ok?: boolean; message?: string; summary?: Record<string, number> };
+      if (!response.ok || !result.ok) throw new Error(result.message || "Falha na sincronização");
+      const summary = result.summary ? ` ${result.summary.vistorias ?? 0} vistorias, ${result.summary.fotos ?? 0} fotos e ${result.summary.avaliacoes ?? 0} avaliações.` : "";
+      toast(`${result.message ?? "Backup enviado ao MySQL."}${summary}`);
+    } catch {
+      toast("Não foi possível enviar o backup. Verifique Apache, MySQL e api/config.php.");
+    } finally {
+      setSyncing(false);
+    }
   };
 
   return (
@@ -371,6 +395,7 @@ export default function Settings({
                 <Btn variant="soft" onClick={exportJson}>
                   <IcDownload width={15} height={15} /> Exportar JSON
                 </Btn>
+                <Btn onClick={() => void syncMySql()} disabled={syncing || !online} variant="soft">{syncing ? "Enviando..." : "Enviar ao MySQL"}</Btn>
               </div>
 
               <div className="rounded-md border border-line-soft bg-ink-850/70 px-3.5 py-3">
