@@ -35,15 +35,16 @@ export default function AddressFields({ value, onChange }: Props) {
       .finally(() => setLoadingCities(false));
   }, [value.uf]);
 
-  const lookupCep = async () => {
-    if (normalizedCep.length !== 8) return;
+  const lookupCep = async (cepInput = normalizedCep) => {
+    const cepDigits = cepInput.replace(/\D/g, "");
+    if (cepDigits.length !== 8) return;
     setLoadingCep(true);
     setMessage("");
     try {
-      const response = await fetch(`https://viacep.com.br/ws/${normalizedCep}/json/`);
+      const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
       const data = await response.json() as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
       if (data.erro) { setMessage("CEP não encontrado. Preencha o endereço manualmente."); return; }
-      onChange({ ...value, cep: normalizedCep, address: [data.logradouro, data.bairro].filter(Boolean).join(", ") || value.address, city: data.localidade || value.city, uf: data.uf || value.uf });
+      onChange({ ...value, cep: cepDigits, address: [data.logradouro, data.bairro].filter(Boolean).join(", ") || value.address, city: data.localidade || value.city, uf: data.uf || value.uf });
       setMessage("Endereço encontrado automaticamente. Confira e complete o número.");
     } catch {
       setMessage("Busca indisponível. Preencha o endereço manualmente.");
@@ -53,7 +54,7 @@ export default function AddressFields({ value, onChange }: Props) {
   };
 
   return <div className="contents">
-    <Field label="CEP" hint="Ao completar 8 dígitos, o endereço será consultado automaticamente."><TextInput value={value.cep ?? ""} onChange={(e) => onChange({ ...value, cep: e.target.value })} onBlur={() => void lookupCep()} placeholder="00000-000" inputMode="numeric" /></Field>
+    <Field label="CEP" hint="Ao completar 8 dígitos, o endereço será consultado automaticamente."><TextInput value={value.cep ?? ""} onChange={(e) => { const next = e.target.value; onChange({ ...value, cep: next }); if (next.replace(/\D/g, "").length === 8) void lookupCep(next); }} onBlur={() => void lookupCep()} placeholder="00000-000" inputMode="numeric" /></Field>
     <Field label="UF"><Select value={value.uf ?? ""} onChange={(e) => onChange({ ...value, uf: e.target.value, city: "" })}><option value="">Selecione o estado</option>{STATES.map(([uf, name]) => <option key={uf} value={uf}>{uf} — {name}</option>)}</Select></Field>
     <Field label={`Cidade${stateName ? ` — ${stateName}` : ""}`}><Select value={cities.includes(value.city ?? "") ? value.city : ""} onChange={(e) => onChange({ ...value, city: e.target.value })} disabled={!value.uf || loadingCities}><option value="">{loadingCities ? "Carregando cidades…" : value.uf ? "Selecione a cidade" : "Selecione primeiro a UF"}</option>{cities.map((city) => <option key={city} value={city}>{city}</option>)}</Select>{value.uf && !loadingCities && cities.length === 0 && <TextInput className="mt-2" value={value.city ?? ""} onChange={(e) => onChange({ ...value, city: e.target.value })} placeholder="Digite a cidade manualmente" />}</Field>
     <Field label="Logradouro / endereço"><TextInput value={value.address} onChange={(e) => onChange({ ...value, address: e.target.value })} placeholder="Rua, número, complemento" /></Field>
