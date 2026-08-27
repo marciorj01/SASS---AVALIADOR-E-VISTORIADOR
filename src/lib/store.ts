@@ -14,6 +14,8 @@ export interface Inspection {
   client: string;
   address: string;
   city: string;
+  cep?: string;
+  uf?: string;
   type: string;
   status: InspStatus;
   date: string; // ISO (data da vistoria)
@@ -198,6 +200,8 @@ export interface PropertyAssessment {
   propertyType: string;
   address: string;
   city: string;
+  cep?: string;
+  uf?: string;
   areaM2: number;
   bedrooms: number;
   parking: number;

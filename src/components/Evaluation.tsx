@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { fmt, fmtArea, homogenizedUnitValue, comparableUnitValue, parseNum, summarizeAssessment, uid, type ComparableProperty, type Inspection, type PropertyAssessment } from "../lib/store";
 import { Btn, Field, SectionHead, Select, TextArea, TextInput } from "./ui";
+import AddressFields from "./AddressFields";
 import { IcCalc, IcCheck, IcClip, IcPlus, IcTrash } from "./icons";
 
 type Props = {
@@ -141,8 +142,7 @@ export default function Evaluation({ assessments, inspections, library, profile,
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Finalidade"><Select value={current.purpose} onChange={(e) => update("purpose", e.target.value)}><option>Valor de mercado</option><option>Garantia</option><option>Financiamento</option><option>Inventário / partilha</option><option>Judicial</option></Select></Field>
               <Field label="Tipo de imóvel"><Select value={current.propertyType} onChange={(e) => update("propertyType", e.target.value)}><option>Residencial</option><option>Comercial</option><option>Terreno</option><option>Rural</option><option>Industrial</option></Select></Field>
-              <Field label="Endereço do imóvel avaliando *"><TextInput value={current.address} onChange={(e) => update("address", e.target.value)} placeholder="Rua, número, complemento" /></Field>
-              <Field label="Município / UF"><TextInput value={current.city} onChange={(e) => update("city", e.target.value)} placeholder="Cidade / UF" /></Field>
+              <div className="contents"><AddressFields value={{ address: current.address, city: current.city, cep: current.cep, uf: current.uf }} onChange={(next) => setCurrent((prev) => ({ ...prev, address: next.address, city: next.city ?? "", cep: next.cep, uf: next.uf }))} /></div>
               <Field label="Área privativa / terreno (m²) *"><TextInput type="number" min="0" step="0.01" value={current.areaM2 || ""} onChange={(e) => update("areaM2", parseNum(e.target.value))} /></Field>
               <Field label="Dormitórios"><TextInput type="number" min="0" step="1" value={current.bedrooms || ""} onChange={(e) => update("bedrooms", Number(e.target.value) || 0)} /></Field>
               <Field label="Vagas"><TextInput type="number" min="0" step="1" value={current.parking || ""} onChange={(e) => update("parking", Number(e.target.value) || 0)} /></Field>

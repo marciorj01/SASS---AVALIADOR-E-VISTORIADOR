@@ -4,6 +4,7 @@ import Calculator, { type SavePayload } from "./components/Calculator";
 import PhotoField from "./components/PhotoField";
 import Inspections from "./components/Inspections";
 import Evaluation from "./components/Evaluation";
+import AddressFields from "./components/AddressFields";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";
 import Settings from "./components/Settings";
@@ -310,13 +311,15 @@ export default function App() {
     client: "",
     address: "",
     city: "",
+    cep: "",
+    uf: "",
     type: INSPECTION_TYPES[0],
     date: todayISO(),
     notes: "",
   });
 
   const openNew = useCallback(() => {
-    setForm({ client: "", address: "", city: "", type: INSPECTION_TYPES[0], date: todayISO(), notes: "" });
+    setForm({ client: "", address: "", city: "", cep: "", uf: "", type: INSPECTION_TYPES[0], date: todayISO(), notes: "" });
     setNewOpen(true);
   }, []);
 
@@ -327,6 +330,8 @@ export default function App() {
       client: form.client.trim(),
       address: form.address.trim(),
       city: form.city.trim(),
+      cep: form.cep.replace(/\D/g, "") || undefined,
+      uf: form.uf || undefined,
       type: form.type,
       status: "agendada",
       date: form.date || todayISO(),
@@ -671,21 +676,8 @@ export default function App() {
               ))}
             </datalist>
           </Field>
-          <Field label="Endereço do imóvel *">
-            <TextInput
-              value={form.address}
-              placeholder="Rua, número, bairro"
-              onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-            />
-          </Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Município / UF">
-              <TextInput
-                value={form.city}
-                placeholder="Ex.: Jundiaí / SP"
-                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-              />
-            </Field>
+            <AddressFields value={{ address: form.address, city: form.city, cep: form.cep, uf: form.uf }} onChange={(next) => setForm((f) => ({ ...f, address: next.address, city: next.city ?? "", cep: next.cep ?? "", uf: next.uf ?? "" }))} />
             <Field label="Data da vistoria">
               <TextInput
                 type="date"
