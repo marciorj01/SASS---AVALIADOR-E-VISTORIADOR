@@ -68,6 +68,7 @@ function ReportSheet({
   const fieldLog = fieldLogs.find((item) => item.inspectionId === insp.id);
   const reportChecklist = checklists.find((item) => item.inspectionId === insp.id);
   const reportComparison = comparisonReference && checklists.find((item) => item.inspectionId === comparisonReference.id) && reportChecklist ? compareChecklists(checklists.find((item) => item.inspectionId === comparisonReference.id)!, reportChecklist) : [];
+  const customComparisonColumns = (comparisonColumns ?? []).filter((column) => column.enabled && column.id.startsWith("custom_")).sort((a, b) => a.order - b.order);
   const statusLabel: Record<InspStatus, string> = {
     agendada: "Agendada",
     campo: "Em campo",
@@ -175,7 +176,7 @@ function ReportSheet({
 
       <section className="mt-6">
         <h3 className="num text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6b7a94]">2C · Comparação com {comparisonReference?.code ?? "vistoria de referência"}</h3>
-        {reportComparison.length > 0 ? <div className="mt-2 overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-b-2 border-[#22304a] text-left text-[11px] uppercase tracking-wider text-[#6b7a94]"><th className="py-2 pr-3">Ambiente</th><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Referência</th><th className="py-2 pr-3">Atual</th><th className="py-2">Resultado</th></tr></thead><tbody>{reportComparison.filter((item) => item.status !== "inalterado").map((item) => <tr key={item.key} className="border-b border-[#d9d3c2]"><td className="py-1.5 pr-3 font-semibold">{item.roomName}</td><td className="py-1.5 pr-3">{item.itemName}</td><td className="py-1.5 pr-3">{item.entryCondition}</td><td className="py-1.5 pr-3">{item.exitCondition}</td><td className="py-1.5">{item.status === "pendencia_aberta" ? "Pendência aberta" : item.status === "pendencia_resolvida" ? "Pendência resolvida" : "Alterado"}</td></tr>)}</tbody></table></div> : <p className="mt-2 text-sm text-[#6b7a94]">Nenhuma alteração encontrada ou não há vistoria de referência com checklist salvo.</p>}
+        {reportComparison.length > 0 ? <div className="mt-2 overflow-x-auto"><table className="w-full border-collapse text-sm"><thead><tr className="border-b-2 border-[#22304a] text-left text-[11px] uppercase tracking-wider text-[#6b7a94]"><th className="py-2 pr-3">Ambiente</th><th className="py-2 pr-3">Item</th><th className="py-2 pr-3">Referência</th><th className="py-2 pr-3">Atual</th><th className="py-2 pr-3">Resultado</th>{customComparisonColumns.map((column) => <th key={column.id} className="py-2 pr-3">{column.label}</th>)}</tr></thead><tbody>{reportComparison.filter((item) => item.status !== "inalterado").map((item) => <tr key={item.key} className="border-b border-[#d9d3c2]"><td className="py-1.5 pr-3 font-semibold">{item.roomName}</td><td className="py-1.5 pr-3">{item.itemName}</td><td className="py-1.5 pr-3">{item.entryCondition}</td><td className="py-1.5 pr-3">{item.exitCondition}</td><td className="py-1.5 pr-3">{item.status === "pendencia_aberta" ? "Pendência aberta" : item.status === "pendencia_resolvida" ? "Pendência resolvida" : "Alterado"}</td>{customComparisonColumns.map((column) => <td key={column.id} className="py-1.5 pr-3">{item.exitCustomValues[column.id] || item.entryCustomValues[column.id] || "—"}</td>)}</tr>)}</tbody></table></div> : <p className="mt-2 text-sm text-[#6b7a94]">Nenhuma alteração encontrada ou não há vistoria de referência com checklist salvo.</p>}
       </section>
 
       <section className="mt-6">
@@ -510,7 +511,7 @@ export default function Inspections({
             ))}
 
           {tab === "relatorio" && (
-            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} fieldLogs={fieldLogs} comparisonReference={inspections.find((item) => item.id !== selected.id && checklists.some((checklist) => checklist.inspectionId === item.id))} />
+            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} fieldLogs={fieldLogs} comparisonColumns={comparisonColumns} comparisonReference={inspections.find((item) => item.id !== selected.id && checklists.some((checklist) => checklist.inspectionId === item.id))} />
           )}
         </div>
       </div>
