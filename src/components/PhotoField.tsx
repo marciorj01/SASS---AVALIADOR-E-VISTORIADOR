@@ -6,6 +6,7 @@ import {
   fmtDate,
   fmtTime,
   type Inspection,
+  type InspectionChecklist,
   type Photo,
 } from "../lib/store";
 import { Btn, EmptyState, Field, Modal, SectionHead, Select, TextArea, TextInput } from "./ui";
@@ -235,6 +236,7 @@ const QUICK_NOTES = [
 export default function PhotoField({
   photos,
   inspections,
+  checklists,
   focusId,
   onFocusConsumed,
   onAddPhotos,
@@ -246,6 +248,7 @@ export default function PhotoField({
 }: {
   photos: Photo[];
   inspections: Inspection[];
+  checklists: InspectionChecklist[];
   focusId: string | null;
   onFocusConsumed: () => void;
   onAddPhotos: (srcs: string[]) => string[];
@@ -281,6 +284,8 @@ export default function PhotoField({
     .sort((a, b) => b.at.localeCompare(a.at));
 
   const detail = photos.find((p) => p.id === detailId) ?? null;
+  const detailInspection = detail?.inspectionId ? inspections.find((i) => i.id === detail.inspectionId) : undefined;
+  const detailChecklist = detail?.inspectionId ? checklists.find((c) => c.inspectionId === detail.inspectionId) : undefined;
 
   const captureDone = (src: string) => {
     const ids = onAddPhotos([src]);
@@ -462,18 +467,42 @@ export default function PhotoField({
                     ))}
                   </Select>
                 </Field>
-                <Field label="Vistoria">
-                  <Select
-                    value={detail.inspectionId ?? ""}
-                    onChange={(e) => onUpdate(detail.id, { inspectionId: e.target.value || null })}
-                  >
-                    <option value="">— Nenhuma —</option>
-                    {inspections.map((i) => (
-                      <option key={i.id} value={i.id}>{i.code} · {i.client}</option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
+                  <Field label="Vistoria">
+                    <Select
+                      value={detail.inspectionId ?? ""}
+                      onChange={(e) => onUpdate(detail.id, { inspectionId: e.target.value || null, roomId: null, checklistItemId: null })}
+                    >
+                      <option value="">— Nenhuma —</option>
+                      {inspections.map((i) => (
+                        <option key={i.id} value={i.id}>{i.code} · {i.client}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
+
+                {detailInspection && detailChecklist && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Ambiente">
+                      <Select
+                        value={detail.roomId ?? ""}
+                        onChange={(e) => onUpdate(detail.id, { roomId: e.target.value || null, checklistItemId: null })}
+                      >
+                        <option value="">— Geral —</option>
+                        {detailChecklist.rooms.map((room) => <option key={room.id} value={room.id}>{room.name}</option>)}
+                      </Select>
+                    </Field>
+                    <Field label="Item do checklist">
+                      <Select
+                        value={detail.checklistItemId ?? ""}
+                        onChange={(e) => onUpdate(detail.id, { checklistItemId: e.target.value || null })}
+                        disabled={!detail.roomId}
+                      >
+                        <option value="">— Geral —</option>
+                        {detailChecklist.rooms.find((room) => room.id === detail.roomId)?.items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+                      </Select>
+                    </Field>
+                  </div>
+                )}
 
               <div>
                 <div className="mb-2 flex items-center justify-between">

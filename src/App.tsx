@@ -518,6 +518,7 @@ export default function App() {
               <PhotoField
                 photos={photos}
                 inspections={inspections}
+                checklists={checklists}
                 focusId={focusPhoto}
                 onFocusConsumed={consumeFocus}
                 onAddPhotos={addPhotos}

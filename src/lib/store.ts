@@ -56,6 +56,8 @@ export interface Photo {
   caption: string;
   category: string;
   inspectionId: string | null;
+  roomId?: string | null;
+  checklistItemId?: string | null;
   notes: PhotoNote[];
   at: string; // ISO
 }
