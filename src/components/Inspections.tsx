@@ -11,6 +11,7 @@ import {
   type Inspection,
   type InspectionChecklist,
   type InspectionFieldLog,
+  type ComparisonColumn,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -51,6 +52,7 @@ function ReportSheet({
   checklists,
   fieldLogs,
   comparisonReference,
+  comparisonColumns,
 }: {
   insp: Inspection;
   photos: Photo[];
@@ -59,6 +61,7 @@ function ReportSheet({
   checklists: InspectionChecklist[];
   fieldLogs: InspectionFieldLog[];
   comparisonReference?: Inspection;
+  comparisonColumns?: ComparisonColumn[];
 }) {
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -254,6 +257,7 @@ export default function Inspections({
   profile,
   checklists,
   fieldLogs,
+  comparisonColumns,
   onSaveFieldLog,
   onSaveChecklist,
   selectedId,
@@ -272,6 +276,7 @@ export default function Inspections({
   profile: Profile;
   checklists: InspectionChecklist[];
   fieldLogs: InspectionFieldLog[];
+  comparisonColumns: ComparisonColumn[];
   onSaveFieldLog: (next: InspectionFieldLog) => void;
   onSaveChecklist: (next: InspectionChecklist) => void;
   selectedId: string | null;
@@ -297,7 +302,7 @@ export default function Inspections({
       const reference = inspections.find((item) => item.id !== insp.id && checklists.some((checklist) => checklist.inspectionId === item.id));
       const currentChecklist = checklists.find((item) => item.inspectionId === insp.id);
       const referenceChecklist = reference ? checklists.find((item) => item.inspectionId === reference.id) : undefined;
-      await generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs, comparison: reference && currentChecklist && referenceChecklist ? { reference, differences: compareChecklists(referenceChecklist, currentChecklist) } : undefined });
+      await generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs, comparison: reference && currentChecklist && referenceChecklist ? { reference, differences: compareChecklists(referenceChecklist, currentChecklist), columns: comparisonColumns } : undefined });
       toast(`PDF do relatório ${insp.code} salvo.`);
     } catch {
       toast("Não foi possível gerar o PDF neste dispositivo.");
@@ -428,11 +433,7 @@ export default function Inspections({
 
         <div className="mt-4">
           {tab === "checklist" && (
-            <Checklist
-              inspection={selected}
-              value={checklists.find((item) => item.inspectionId === selected.id)}
-              onChange={onSaveChecklist}
-            />
+            <Checklist inspection={selected} value={checklists.find((item) => item.inspectionId === selected.id)} comparisonColumns={comparisonColumns} onChange={onSaveChecklist} />
           )}
 
           {tab === "campo" && (

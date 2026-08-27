@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Btn, Field, Reveal, SectionHead, TextInput } from "./ui";
+import { Btn, Field, Reveal, SectionHead, Select, TextInput } from "./ui";
 import {
   IcAlert,
   IcCheck,
@@ -20,6 +20,7 @@ import {
   uid,
   type Activity,
   type Client,
+  type ComparisonColumn,
   type ComparableProperty,
   type Inspection,
   type InspectionChecklist,
@@ -44,7 +45,9 @@ interface SettingsProps {
   canInstall: boolean;
   installed: boolean;
   onInstall: () => void;
-  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[]; comparableLibrary: ComparableProperty[] };
+  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[]; comparableLibrary: ComparableProperty[]; comparisonColumns: ComparisonColumn[] };
+  comparisonColumns: ComparisonColumn[];
+  onSaveComparisonColumns: (columns: ComparisonColumn[]) => void;
   toast: (t: string) => void;
 }
 
@@ -77,6 +80,8 @@ export default function Settings({
   installed,
   onInstall,
   data,
+  comparisonColumns,
+  onSaveComparisonColumns,
   toast,
 }: SettingsProps) {
   /* ---------- identificação ---------- */
@@ -103,7 +108,18 @@ export default function Settings({
 
   /* ---------- segurança ---------- */
   const [sec, setSec] = useState({ cur: "", next: "", confirm: "" });
+  const [customColumnLabel, setCustomColumnLabel] = useState("");
   const [secMsg, setSecMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const addComparisonColumn = (e: FormEvent) => {
+    e.preventDefault();
+    const label = customColumnLabel.trim();
+    if (!label) return;
+    const id = `custom_${uid()}`;
+    onSaveComparisonColumns([...comparisonColumns, { id, label, enabled: true, order: comparisonColumns.length + 1 }]);
+    setCustomColumnLabel("");
+    toast(`Coluna “${label}” adicionada ao comparativo.`);
+  };
 
   const submitPass = (e: FormEvent) => {
     e.preventDefault();
@@ -147,6 +163,7 @@ export default function Settings({
       checklists: data.checklists,
       dadosDeCampo: data.fieldLogs,
       bibliotecaComparaveis: data.comparableLibrary,
+      colunasComparativo: comparisonColumns,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -354,6 +371,27 @@ export default function Settings({
                 <Btn variant="soft" onClick={exportJson}>
                   <IcDownload width={15} height={15} /> Exportar JSON
                 </Btn>
+              </div>
+
+              <div className="rounded-md border border-line-soft bg-ink-850/70 px-3.5 py-3">
+                <p className="text-sm font-semibold text-fog-100">Colunas do resumo comparativo</p>
+                <p className="mt-1 text-[12px] text-fog-500">Escolha quais informações aparecem na tabela do PDF. A configuração fica salva neste dispositivo.</p>
+                <form onSubmit={addComparisonColumn} className="mt-3 flex gap-2">
+                  <TextInput value={customColumnLabel} onChange={(e) => setCustomColumnLabel(e.target.value)} placeholder="Ex.: Responsável pelo reparo" />
+                  <Btn type="submit" variant="soft" disabled={!customColumnLabel.trim()}>Adicionar</Btn>
+                </form>
+                <div className="mt-3 space-y-2">
+                  {[...comparisonColumns].sort((a, b) => a.order - b.order).map((column) => (
+                    <label key={column.id} className="flex items-center gap-2 text-sm text-fog-300">
+                      <input type="checkbox" checked={column.enabled} onChange={() => onSaveComparisonColumns(comparisonColumns.map((item) => item.id === column.id ? { ...item, enabled: !item.enabled } : item))} />
+                      <span className="flex-1">{column.label}</span>
+                      <Select className="w-20" value={String(column.order)} onChange={(e) => { const nextOrder = Number(e.target.value); onSaveComparisonColumns(comparisonColumns.map((item) => item.id === column.id ? { ...item, order: nextOrder } : item)); }}>
+                        {[1, 2, 3, 4, 5, 6].map((order) => <option key={order} value={order}>{order}º</option>)}
+                      </Select>
+                      {column.id.startsWith("custom_") && <button type="button" className="text-xs text-danger-300" onClick={() => onSaveComparisonColumns(comparisonColumns.filter((item) => item.id !== column.id))}>Excluir</button>}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               <p className="num pt-1 text-[10.5px] uppercase tracking-[0.16em] text-fog-600">

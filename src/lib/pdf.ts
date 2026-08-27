@@ -9,6 +9,7 @@ import {
   type InspectionChecklist,
   type InspectionFieldLog,
   type ChecklistDifference,
+  type ComparisonColumn,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -135,7 +136,7 @@ export interface ReportInput {
   profile: Profile;
   checklists: InspectionChecklist[];
   fieldLogs: InspectionFieldLog[];
-  comparison?: { reference: Inspection; differences: ChecklistDifference[] };
+  comparison?: { reference: Inspection; differences: ChecklistDifference[]; columns?: ComparisonColumn[] };
 }
 
 export async function generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs, comparison }: ReportInput): Promise<void> {
@@ -301,6 +302,7 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
   if (comparison) {
     y = sectionHead(doc, y, "2B", `Comparação com ${comparison.reference.code}`);
     const changed = comparison.differences.filter((item) => item.status !== "inalterado");
+    const columns = [...(comparison.columns ?? [])].filter((column) => column.enabled).sort((a, b) => a.order - b.order);
     const opened = comparison.differences.filter((item) => item.status === "pendencia_aberta").length;
     const resolved = comparison.differences.filter((item) => item.status === "pendencia_resolvida").length;
     const altered = comparison.differences.filter((item) => item.status === "alterado").length;
@@ -344,12 +346,16 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
         theme: "grid",
         headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.2, fontStyle: "bold" },
         styles: { font: "helvetica", fontSize: 7.1, cellPadding: 1.5, textColor: INK, lineColor: SOFT, lineWidth: 0.2, overflow: "linebreak" },
-        head: [["Ambiente", "Item", "Entrada", "Saída", "Resultado", "Observações"]],
+        head: [columns.length > 0 ? columns.map((column) => column.label) : ["Ambiente", "Item", "Entrada", "Saída", "Resultado", "Observações"]],
         body: changed.map((item) => {
           const entry = `${CHECKLIST_CONDITION_LABEL[item.entryCondition] ?? item.entryCondition}${item.entryPending ? " · pendente" : ""}`;
           const exit = `${CHECKLIST_CONDITION_LABEL[item.exitCondition] ?? item.exitCondition}${item.exitPending ? " · pendente" : ""}`;
           const notes = [item.entryNote && `Entrada: ${item.entryNote}`, item.exitNote && `Saída: ${item.exitNote}`].filter(Boolean).join(" | ") || "—";
-          return [item.roomName, item.itemName, entry, exit, COMPARISON_STATUS_LABEL[item.status] ?? item.status, notes];
+          const values: Record<string, string> = { ambiente: item.roomName, item: item.itemName, entrada: entry, saida: exit, resultado: COMPARISON_STATUS_LABEL[item.status] ?? item.status, observacoes: notes };
+          const visibleColumns = columns.length > 0 ? columns : [
+            { id: "ambiente" }, { id: "item" }, { id: "entrada" }, { id: "saida" }, { id: "resultado" }, { id: "observacoes" },
+          ];
+          return visibleColumns.map((column) => values[column.id] ?? item.exitCustomValues[column.id] ?? item.entryCustomValues[column.id] ?? "—");
         }),
         columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 32 }, 2: { cellWidth: 28 }, 3: { cellWidth: 28 }, 4: { cellWidth: 27 }, 5: { cellWidth: 46 } },
       });

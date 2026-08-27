@@ -42,8 +42,10 @@ import {
   uid,
   usePersist,
   writeSession,
+  DEFAULT_COMPARISON_COLUMNS,
   type Activity,
   type Client,
+  type ComparisonColumn,
   type ComparableProperty,
   type InspectionChecklist,
   type InspectionFieldLog,
@@ -112,6 +114,7 @@ export default function App() {
   const [activity, setActivity] = usePersist<Activity[]>("prumo.activity", seedActivity);
   const [assessments, setAssessments] = usePersist<PropertyAssessment[]>("prumo.assessments", () => []);
   const [comparableLibrary, setComparableLibrary] = usePersist<ComparableProperty[]>("prumo.comparableLibrary", () => []);
+  const [comparisonColumns, setComparisonColumns] = usePersist<ComparisonColumn[]>("prumo.comparisonColumns", () => DEFAULT_COMPARISON_COLUMNS);
 
   /* ---------- autenticação, perfil e vistoriados ---------- */
   const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
@@ -560,6 +563,7 @@ export default function App() {
                 profile={profile}
                 checklists={checklists}
                 fieldLogs={fieldLogs}
+                comparisonColumns={comparisonColumns}
                 onSaveFieldLog={(next) => setFieldLogs((prev) => [next, ...prev.filter((item) => item.inspectionId !== next.inspectionId)])}
                 onSaveChecklist={saveChecklist}
                 selectedId={selectedInsp}
@@ -601,7 +605,9 @@ export default function App() {
                 canInstall={!!installEvt}
                 installed={installed}
                 onInstall={() => void doInstall()}
-                data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs, comparableLibrary }}
+                data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs, comparableLibrary, comparisonColumns }}
+                comparisonColumns={comparisonColumns}
+                onSaveComparisonColumns={setComparisonColumns}
                 toast={toast}
               />
             )}

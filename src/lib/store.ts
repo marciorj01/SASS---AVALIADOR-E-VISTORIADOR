@@ -31,6 +31,7 @@ export interface ChecklistItem {
   pending: boolean;
   damageType?: string;
   recommendedAction?: string;
+  customValues?: Record<string, string>;
   updatedAt: string;
 }
 
@@ -48,6 +49,22 @@ export interface InspectionChecklist {
   updatedAt: string;
 }
 
+export interface ComparisonColumn {
+  id: string;
+  label: string;
+  enabled: boolean;
+  order: number;
+}
+
+export const DEFAULT_COMPARISON_COLUMNS: ComparisonColumn[] = [
+  { id: "ambiente", label: "Ambiente", enabled: true, order: 1 },
+  { id: "item", label: "Item", enabled: true, order: 2 },
+  { id: "entrada", label: "Entrada", enabled: true, order: 3 },
+  { id: "saida", label: "Saída", enabled: true, order: 4 },
+  { id: "resultado", label: "Resultado", enabled: true, order: 5 },
+  { id: "observacoes", label: "Observações", enabled: true, order: 6 },
+];
+
 export type ChecklistDifferenceStatus = "inalterado" | "alterado" | "pendencia_aberta" | "pendencia_resolvida";
 export interface ChecklistDifference {
   key: string;
@@ -59,6 +76,8 @@ export interface ChecklistDifference {
   exitPending: boolean;
   entryNote: string;
   exitNote: string;
+  entryCustomValues: Record<string, string>;
+  exitCustomValues: Record<string, string>;
   status: ChecklistDifferenceStatus;
 }
 
@@ -74,7 +93,7 @@ export function compareChecklists(entry: InspectionChecklist, exit: InspectionCh
     const entryPending = Boolean(before?.item.pending);
     const exitPending = Boolean(after?.item.pending);
     const status: ChecklistDifferenceStatus = !entryPending && exitPending ? "pendencia_aberta" : entryPending && !exitPending ? "pendencia_resolvida" : entryCondition !== exitCondition || (before?.item.note ?? "") !== (after?.item.note ?? "") ? "alterado" : "inalterado";
-    return { key, roomName: after?.room.name ?? before?.room.name ?? "Ambiente", itemName: after?.item.name ?? before?.item.name ?? "Item", entryCondition, exitCondition, entryPending, exitPending, entryNote: before?.item.note ?? "", exitNote: after?.item.note ?? "", status };
+    return { key, roomName: after?.room.name ?? before?.room.name ?? "Ambiente", itemName: after?.item.name ?? before?.item.name ?? "Item", entryCondition, exitCondition, entryPending, exitPending, entryNote: before?.item.note ?? "", exitNote: after?.item.note ?? "", entryCustomValues: before?.item.customValues ?? {}, exitCustomValues: after?.item.customValues ?? {}, status };
   });
 }
 
