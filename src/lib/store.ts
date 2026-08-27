@@ -46,6 +46,36 @@ export interface InspectionChecklist {
   updatedAt: string;
 }
 
+export type ChecklistDifferenceStatus = "inalterado" | "alterado" | "pendencia_aberta" | "pendencia_resolvida";
+export interface ChecklistDifference {
+  key: string;
+  roomName: string;
+  itemName: string;
+  entryCondition: ChecklistCondition;
+  exitCondition: ChecklistCondition;
+  entryPending: boolean;
+  exitPending: boolean;
+  entryNote: string;
+  exitNote: string;
+  status: ChecklistDifferenceStatus;
+}
+
+export function compareChecklists(entry: InspectionChecklist, exit: InspectionChecklist): ChecklistDifference[] {
+  const entryItems = new Map(entry.rooms.flatMap((room) => room.items.map((item) => [`${room.name}::${item.name}`, { room, item }] as const)));
+  const exitItems = new Map(exit.rooms.flatMap((room) => room.items.map((item) => [`${room.name}::${item.name}`, { room, item }] as const)));
+  const keys = Array.from(new Set([...entryItems.keys(), ...exitItems.keys()]));
+  return keys.map((key) => {
+    const before = entryItems.get(key);
+    const after = exitItems.get(key);
+    const entryCondition = before?.item.condition ?? "nao_verificado";
+    const exitCondition = after?.item.condition ?? "nao_verificado";
+    const entryPending = Boolean(before?.item.pending);
+    const exitPending = Boolean(after?.item.pending);
+    const status: ChecklistDifferenceStatus = !entryPending && exitPending ? "pendencia_aberta" : entryPending && !exitPending ? "pendencia_resolvida" : entryCondition !== exitCondition || (before?.item.note ?? "") !== (after?.item.note ?? "") ? "alterado" : "inalterado";
+    return { key, roomName: after?.room.name ?? before?.room.name ?? "Ambiente", itemName: after?.item.name ?? before?.item.name ?? "Item", entryCondition, exitCondition, entryPending, exitPending, entryNote: before?.item.note ?? "", exitNote: after?.item.note ?? "", status };
+  });
+}
+
 export interface PhotoNote {
   id: string;
   text: string;

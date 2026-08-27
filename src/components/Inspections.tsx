@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Checklist from "./Checklist";
 import FieldLog from "./FieldLog";
+import Comparison from "./Comparison";
 import {
   fmtArea,
   fmtDate,
@@ -234,7 +235,7 @@ function ReportSheet({
 
 /* ---------- componente principal ---------- */
 
-type Tab = "checklist" | "campo" | "fotos" | "medicoes" | "relatorio";
+type Tab = "checklist" | "campo" | "comparacao" | "fotos" | "medicoes" | "relatorio";
 type StatusFilter = "todas" | InspStatus;
 
 export default function Inspections({
@@ -386,6 +387,7 @@ export default function Inspections({
             options={[
               { id: "checklist", label: (<><IcCheck width={15} height={15} /> Checklist</>) },
               { id: "campo", label: (<><IcFlag width={15} height={15} /> Campo</>) },
+              { id: "comparacao", label: (<><IcCheck width={15} height={15} /> Comparar</>) },
               { id: "fotos", label: (<><IcCamera width={15} height={15} /> Fotos ({iPhotos.length})</>) },
               { id: "medicoes", label: (<><IcCalc width={15} height={15} /> Medições ({iMeas.length})</>) },
               { id: "relatorio", label: (<><IcPrinter width={15} height={15} /> Relatório</>) },
@@ -427,6 +429,10 @@ export default function Inspections({
               value={fieldLogs.find((item) => item.inspectionId === selected.id)}
               onChange={onSaveFieldLog}
             />
+          )}
+
+          {tab === "comparacao" && (
+            <Comparison inspections={inspections} checklists={checklists} selectedId={selected.id} />
           )}
 
           {tab === "fotos" &&
