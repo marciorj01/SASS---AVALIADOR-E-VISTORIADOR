@@ -42,6 +42,22 @@ const GROUP_LABEL: Record<string, string> = {
   conversao: "Conversão",
 };
 
+const CHECKLIST_CONDITION_LABEL: Record<string, string> = {
+  novo: "Novo",
+  bom: "Bom",
+  regular: "Regular",
+  ruim: "Ruim",
+  nao_verificado: "Não verificado",
+  nao_aplicavel: "Não se aplica",
+};
+
+const COMPARISON_STATUS_LABEL: Record<string, string> = {
+  alterado: "Alterado",
+  pendencia_aberta: "Pendência aberta",
+  pendencia_resolvida: "Pendência resolvida",
+  inalterado: "Inalterado",
+};
+
 /** Carrega uma imagem (dataURL ou URL) e devolve JPEG compatível com jsPDF. */
 function toJpegData(src: string): Promise<{ data: string; w: number; h: number } | null> {
   return new Promise((resolve) => {
@@ -282,19 +298,63 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
   }
 
   /* ---------- 2B. Comparação ---------- */
-  if (comparison && comparison.differences.length > 0) {
+  if (comparison) {
     y = sectionHead(doc, y, "2B", `Comparação com ${comparison.reference.code}`);
     const changed = comparison.differences.filter((item) => item.status !== "inalterado");
+    const opened = comparison.differences.filter((item) => item.status === "pendencia_aberta").length;
+    const resolved = comparison.differences.filter((item) => item.status === "pendencia_resolvida").length;
+    const altered = comparison.differences.filter((item) => item.status === "alterado").length;
+    const unchanged = comparison.differences.filter((item) => item.status === "inalterado").length;
+    const referenceDate = comparison.reference.date ? fmtDate(comparison.reference.date) : "Não informada";
+    const currentDate = insp.date ? fmtDate(insp.date) : "Não informada";
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8.2);
+    doc.setTextColor(...GRAY);
+    const comparisonIntro = doc.splitTextToSize(
+      `Vistoria de referência: ${comparison.reference.code} · ${referenceDate}   |   Vistoria atual: ${insp.code} · ${currentDate}`,
+      EDGE - M
+    ) as string[];
+    y = ensurePage(doc, y, comparisonIntro.length * 3.8 + 18);
+    doc.text(comparisonIntro, M, y);
+    y += comparisonIntro.length * 3.8 + 4;
+
     autoTable(doc, {
       startY: y,
       margin: { left: M, right: M },
       theme: "grid",
       headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.6, fontStyle: "bold" },
       styles: { font: "helvetica", fontSize: 7.4, cellPadding: 1.5, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
-      head: [["Ambiente", "Item", "Referência", "Atual", "Resultado"]],
-      body: changed.map((item) => [item.roomName, item.itemName, item.entryCondition, item.exitCondition, item.status === "pendencia_aberta" ? "Pendência aberta" : item.status === "pendencia_resolvida" ? "Pendência resolvida" : "Alterado"]),
+      head: [["Alterados", "Pendências abertas", "Pendências resolvidas", "Sem alteração"]],
+      body: [[String(altered), String(opened), String(resolved), String(unchanged)]],
+      columnStyles: { 0: { halign: "center" }, 1: { halign: "center" }, 2: { halign: "center" }, 3: { halign: "center" } },
     });
-    y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 7;
+    y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 5;
+
+    if (changed.length === 0) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8.6);
+      doc.setTextColor(...GRAY);
+      doc.text("Nenhuma diferença ou pendência foi identificada entre as vistorias.", M, y);
+      y += 8;
+    } else {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: M, right: M },
+        theme: "grid",
+        headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 7.2, fontStyle: "bold" },
+        styles: { font: "helvetica", fontSize: 7.1, cellPadding: 1.5, textColor: INK, lineColor: SOFT, lineWidth: 0.2, overflow: "linebreak" },
+        head: [["Ambiente", "Item", "Entrada", "Saída", "Resultado", "Observações"]],
+        body: changed.map((item) => {
+          const entry = `${CHECKLIST_CONDITION_LABEL[item.entryCondition] ?? item.entryCondition}${item.entryPending ? " · pendente" : ""}`;
+          const exit = `${CHECKLIST_CONDITION_LABEL[item.exitCondition] ?? item.exitCondition}${item.exitPending ? " · pendente" : ""}`;
+          const notes = [item.entryNote && `Entrada: ${item.entryNote}`, item.exitNote && `Saída: ${item.exitNote}`].filter(Boolean).join(" | ") || "—";
+          return [item.roomName, item.itemName, entry, exit, COMPARISON_STATUS_LABEL[item.status] ?? item.status, notes];
+        }),
+        columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 32 }, 2: { cellWidth: 28 }, 3: { cellWidth: 28 }, 4: { cellWidth: 27 }, 5: { cellWidth: 46 } },
+      });
+      y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 7;
+    }
   }
 
   /* ---------- 2C. Checklist de vistoria ---------- */
