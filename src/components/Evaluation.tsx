@@ -42,6 +42,16 @@ const emptyAssessment = (): PropertyAssessment => ({
   notes: "",
   comparables: [],
   updatedAt: new Date().toISOString(),
+  requester: "",
+  owner: "",
+  documentReference: "",
+  registrationOffice: "",
+  inspectionDate: new Date().toISOString().slice(0, 10),
+  referenceDate: new Date().toISOString().slice(0, 10),
+  methodology: "Método comparativo direto de dados de mercado",
+  sourceNotes: "",
+  limitations: "",
+
 });
 
 const money = (value: number) => `R$ ${fmt(value, 2)}`;
@@ -118,7 +128,20 @@ export default function Evaluation({ assessments, inspections, profile, onSave, 
           </section>
 
           <section className="panel p-5 sm:p-6">
-            <div className="mb-5"><p className="eyebrow">02 / AMOSTRAGEM DE MERCADO</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Adicionar comparável</h2><p className="mt-1 text-xs text-fog-500">Use fatores relativos: 1,00 mantém o preço unitário; 0,90 reduz 10%; 1,10 aumenta 10%.</p></div>
+            <div className="mb-5"><p className="eyebrow">02 / IDENTIFICAÇÃO E DOCUMENTAÇÃO</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Partes e referências</h2><p className="mt-1 text-xs text-fog-500">Registre quem solicitou o trabalho, a titularidade informada e os documentos consultados.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Solicitante / contratante"><TextInput value={current.requester ?? ""} onChange={(e) => update("requester", e.target.value)} placeholder="Nome ou razão social" /></Field>
+              <Field label="Proprietário / interessado"><TextInput value={current.owner ?? ""} onChange={(e) => update("owner", e.target.value)} placeholder="Nome do proprietário ou interessado" /></Field>
+              <Field label="Matrícula / inscrição / referência"><TextInput value={current.documentReference ?? ""} onChange={(e) => update("documentReference", e.target.value)} placeholder="Número ou referência do documento" /></Field>
+              <Field label="Cartório / órgão / fonte documental"><TextInput value={current.registrationOffice ?? ""} onChange={(e) => update("registrationOffice", e.target.value)} placeholder="Cartório, prefeitura ou outra fonte" /></Field>
+              <Field label="Data da vistoria"><TextInput type="date" value={current.inspectionDate ?? ""} onChange={(e) => update("inspectionDate", e.target.value)} /></Field>
+              <Field label="Data de referência do valor"><TextInput type="date" value={current.referenceDate ?? ""} onChange={(e) => update("referenceDate", e.target.value)} /></Field>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Metodologia"><Select value={current.methodology ?? "Método comparativo direto de dados de mercado"} onChange={(e) => update("methodology", e.target.value)}><option>Método comparativo direto de dados de mercado</option><option>Método evolutivo</option><option>Método involutivo</option><option>Método da renda</option><option>Metodologia definida pelo profissional</option></Select></Field><Field label="Descrição da metodologia"><TextArea value={current.notes} onChange={(e) => update("notes", e.target.value)} placeholder="Critérios de seleção, homogeneização e tratamento dos dados..." /></Field></div>
+          </section>
+
+          <section className="panel p-5 sm:p-6">
+            <div className="mb-5"><p className="eyebrow">03 / METODOLOGIA E AMOSTRAGEM</p><h2 className="font-display text-2xl font-semibold uppercase text-fog-100">Adicionar comparável</h2><p className="mt-1 text-xs text-fog-500">Use fatores relativos: 1,00 mantém o preço unitário; 0,90 reduz 10%; 1,10 aumenta 10%.</p></div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Endereço / identificação *"><TextInput value={draft.address} onChange={(e) => setDraft((d) => ({ ...d, address: e.target.value }))} placeholder="Imóvel ofertado ou vendido" /></Field>
               <Field label="Cidade / UF"><TextInput value={draft.city} onChange={(e) => setDraft((d) => ({ ...d, city: e.target.value }))} placeholder="Cidade / UF" /></Field>

@@ -203,6 +203,15 @@ export interface PropertyAssessment {
   notes: string;
   comparables: ComparableProperty[];
   updatedAt: string;
+  requester?: string;
+  owner?: string;
+  documentReference?: string;
+  registrationOffice?: string;
+  inspectionDate?: string;
+  referenceDate?: string;
+  methodology?: string;
+  sourceNotes?: string;
+  limitations?: string;
 }
 
 /* ---------- Constantes de domínio ---------- */
