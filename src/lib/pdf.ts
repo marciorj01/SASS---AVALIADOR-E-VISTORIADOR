@@ -7,6 +7,7 @@ import {
   fmtTime,
   type Inspection,
   type InspectionChecklist,
+  type InspectionFieldLog,
   type InspStatus,
   type Measurement,
   type Photo,
@@ -116,9 +117,10 @@ export interface ReportInput {
   measurements: Measurement[];
   profile: Profile;
   checklists: InspectionChecklist[];
+  fieldLogs: InspectionFieldLog[];
 }
 
-export async function generateReportPdf({ insp, photos, measurements, profile, checklists }: ReportInput): Promise<void> {
+export async function generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs }: ReportInput): Promise<void> {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
@@ -220,6 +222,61 @@ export async function generateReportPdf({ insp, photos, measurements, profile, c
       footStyles: { fillColor: [236, 232, 220], textColor: INK, fontSize: 8.6 },
     });
     y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 8;
+  }
+
+  /* ---------- 2A. Dados de campo ---------- */
+  const fieldLog = fieldLogs.find((item) => item.inspectionId === insp.id);
+  y = sectionHead(doc, y, "2A", "Dados de campo");
+  if (!fieldLog) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(8.6);
+    doc.setTextColor(...GRAY);
+    doc.text("Nenhum dado de campo adicional registrado.", M, y);
+    y += 8;
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.8);
+    doc.setTextColor(...INK);
+    doc.text(`Fase: ${fieldLog.phase === "entrada" ? "Vistoria de entrada" : fieldLog.phase === "saida" ? "Vistoria de saída" : "Conferência"}`, M, y);
+    y += 5;
+    if (fieldLog.readings.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: M, right: M },
+        theme: "grid",
+        headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+        styles: { font: "helvetica", fontSize: 8.2, cellPadding: 1.8, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
+        head: [["Medidor", "Número", "Leitura", "Observação"]],
+        body: fieldLog.readings.map((reading) => [
+          reading.kind === "agua" ? "Água" : reading.kind === "energia" ? "Energia" : "Gás",
+          reading.meterNumber || "—",
+          reading.value ? `${reading.value} ${reading.unit}` : "—",
+          reading.note || "—",
+        ]),
+      });
+      y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 5;
+    }
+    if (fieldLog.keys.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        margin: { left: M, right: M },
+        theme: "grid",
+        headStyles: { fillColor: NAVY, textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+        styles: { font: "helvetica", fontSize: 8.2, cellPadding: 1.8, textColor: INK, lineColor: SOFT, lineWidth: 0.2 },
+        head: [["Chave/controle", "Quantidade", "Situação", "Observação"]],
+        body: fieldLog.keys.map((key) => [key.label, String(key.quantity), key.status === "entregue" ? "Entregue" : key.status === "pendente" ? "Pendente" : "Não se aplica", key.note || "—"]),
+      });
+      y = ((doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable?.finalY ?? y) + 5;
+    }
+    if (fieldLog.notes) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(...GRAY);
+      const fieldNotes = doc.splitTextToSize(`Observações: ${fieldLog.notes}`, EDGE - M) as string[];
+      y = ensurePage(doc, y, fieldNotes.length * 3.8 + 4);
+      doc.text(fieldNotes, M, y);
+      y += fieldNotes.length * 3.8 + 4;
+    }
   }
 
   /* ---------- 3. Registro fotográfico ---------- */

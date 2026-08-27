@@ -22,6 +22,7 @@ import {
   type Client,
   type Inspection,
   type InspectionChecklist,
+  type InspectionFieldLog,
   type Measurement,
   type Photo,
   type Profile,
@@ -42,7 +43,7 @@ interface SettingsProps {
   canInstall: boolean;
   installed: boolean;
   onInstall: () => void;
-  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[] };
+  data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[] };
   toast: (t: string) => void;
 }
 
@@ -143,6 +144,7 @@ export default function Settings({
       atividade: data.activity,
       avaliacoesMercadologicas: data.assessments,
       checklists: data.checklists,
+      dadosDeCampo: data.fieldLogs,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);

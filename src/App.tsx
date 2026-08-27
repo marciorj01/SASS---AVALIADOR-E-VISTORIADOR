@@ -583,7 +583,7 @@ export default function App() {
                 canInstall={!!installEvt}
                 installed={installed}
                 onInstall={() => void doInstall()}
-                data={{ inspections, photos, measurements, activity, assessments, checklists }}
+                data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs }}
                 toast={toast}
               />
             )}

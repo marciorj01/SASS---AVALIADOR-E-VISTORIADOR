@@ -47,15 +47,18 @@ function ReportSheet({
   measurements,
   profile,
   checklists,
+  fieldLogs,
 }: {
   insp: Inspection;
   photos: Photo[];
   measurements: Measurement[];
   profile: Profile;
   checklists: InspectionChecklist[];
+  fieldLogs: InspectionFieldLog[];
 }) {
   const rPhotos = photos.filter((p) => p.inspectionId === insp.id);
   const rMeas = measurements.filter((m) => m.inspectionId === insp.id);
+  const fieldLog = fieldLogs.find((item) => item.inspectionId === insp.id);
   const statusLabel: Record<InspStatus, string> = {
     agendada: "Agendada",
     campo: "Em campo",
@@ -149,6 +152,11 @@ function ReportSheet({
             </tbody>
           </table>
         )}
+      </section>
+
+      <section className="mt-6">
+        <h3 className="num text-[10.5px] font-semibold uppercase tracking-[0.2em] text-[#6b7a94]">2A · Dados de campo</h3>
+        {fieldLog ? <div className="mt-2 space-y-3 text-sm"><p className="font-semibold">Fase: {fieldLog.phase === "entrada" ? "Vistoria de entrada" : fieldLog.phase === "saida" ? "Vistoria de saída" : "Conferência"}</p>{fieldLog.readings.length > 0 && <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-[#c9c2ae] text-left text-[11px] uppercase text-[#6b7a94]"><th className="py-1.5 pr-3">Medidor</th><th className="py-1.5 pr-3">Número</th><th className="py-1.5 pr-3">Leitura</th><th className="py-1.5">Observação</th></tr></thead><tbody>{fieldLog.readings.map((reading) => <tr key={reading.id} className="border-b border-[#d9d3c2]"><td className="py-1.5 pr-3 font-semibold">{reading.kind === "agua" ? "Água" : reading.kind === "energia" ? "Energia" : "Gás"}</td><td className="py-1.5 pr-3">{reading.meterNumber || "—"}</td><td className="py-1.5 pr-3">{reading.value ? `${reading.value} ${reading.unit}` : "—"}</td><td className="py-1.5">{reading.note || "—"}</td></tr>)}</tbody></table></div>}{fieldLog.keys.length > 0 && <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-[#c9c2ae] text-left text-[11px] uppercase text-[#6b7a94]"><th className="py-1.5 pr-3">Chave/controle</th><th className="py-1.5 pr-3">Qtd.</th><th className="py-1.5 pr-3">Situação</th><th className="py-1.5">Observação</th></tr></thead><tbody>{fieldLog.keys.map((key) => <tr key={key.id} className="border-b border-[#d9d3c2]"><td className="py-1.5 pr-3 font-semibold">{key.label}</td><td className="py-1.5 pr-3">{key.quantity}</td><td className="py-1.5 pr-3">{key.status === "entregue" ? "Entregue" : key.status === "pendente" ? "Pendente" : "Não se aplica"}</td><td className="py-1.5">{key.note || "—"}</td></tr>)}</tbody></table></div>}{fieldLog.notes && <p className="whitespace-pre-line text-[#42536f]"><strong>Observações:</strong> {fieldLog.notes}</p>}</div> : <p className="mt-2 text-sm text-[#6b7a94]">Nenhum dado de campo adicional registrado.</p>}
       </section>
 
       <section className="mt-6">
@@ -270,7 +278,7 @@ export default function Inspections({
     try {
       /* carregamento sob demanda mantém o app leve na abertura */
       const { generateReportPdf } = await import("../lib/pdf");
-      await generateReportPdf({ insp, photos, measurements, profile, checklists });
+      await generateReportPdf({ insp, photos, measurements, profile, checklists, fieldLogs });
       toast(`PDF do relatório ${insp.code} salvo.`);
     } catch {
       toast("Não foi possível gerar o PDF neste dispositivo.");
@@ -477,7 +485,7 @@ export default function Inspections({
             ))}
 
           {tab === "relatorio" && (
-            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} />
+            <ReportSheet insp={selected} photos={photos} measurements={measurements} profile={profile} checklists={checklists} fieldLogs={fieldLogs} />
           )}
         </div>
       </div>
