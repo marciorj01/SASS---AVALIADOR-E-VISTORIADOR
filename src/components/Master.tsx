@@ -527,7 +527,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
               <div>
                 <p className="eyebrow mb-2 text-brand-300">3. LOCALIZAÇÃO DA EMPRESA</p>
                 <div className="grid gap-3 sm:grid-cols-4 items-end">
-                  <Field label="CEP" hint="Busca automática ao digitar 8 números">
+                  <Field label="CEP">
                     <TextInput
                       value={tenantForm.cep}
                       onChange={(e) => {
