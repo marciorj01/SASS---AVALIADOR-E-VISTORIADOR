@@ -30,6 +30,7 @@ import {
   type Profile,
   type PropertyAssessment,
   type Session,
+  type TrashItem,
 } from "../lib/store";
 
 interface SettingsProps {
@@ -46,8 +47,11 @@ interface SettingsProps {
   installed: boolean;
   onInstall: () => void;
   data: { inspections: Inspection[]; photos: Photo[]; measurements: Measurement[]; activity: Activity[]; assessments: PropertyAssessment[]; checklists: InspectionChecklist[]; fieldLogs: InspectionFieldLog[]; comparableLibrary: ComparableProperty[]; comparisonColumns: ComparisonColumn[] };
+  trash: TrashItem[];
   comparisonColumns: ComparisonColumn[];
   onSaveComparisonColumns: (columns: ComparisonColumn[]) => void;
+  onRestoreTrash: (item: TrashItem) => void;
+  onPermanentlyDeleteTrash: (id: string) => void;
   toast: (t: string) => void;
 }
 
@@ -81,7 +85,10 @@ export default function Settings({
   onInstall,
   data,
   comparisonColumns,
+  trash,
   onSaveComparisonColumns,
+  onRestoreTrash,
+  onPermanentlyDeleteTrash,
   toast,
 }: SettingsProps) {
   /* ---------- identificação ---------- */
@@ -179,6 +186,8 @@ export default function Settings({
     URL.revokeObjectURL(url);
     toast("Backup exportado em JSON.");
   };
+
+  const activeTrash = trash.filter((item) => !item.restoredAt);
 
   const syncMySql = async () => {
     if (!online) {
@@ -419,8 +428,19 @@ export default function Settings({
                 </div>
               </div>
 
+              <div className="rounded-md border border-line-soft bg-ink-850/70 px-3.5 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div><p className="text-sm font-semibold text-fog-100">Lixeira</p><p className="mt-1 text-[12px] text-fog-500">Itens excluídos ficam aqui até serem restaurados ou removidos definitivamente.</p></div>
+                  <span className="chip border-accent-400/40 text-accent-300">{activeTrash.length} item(ns)</span>
+                </div>
+                <div className="mt-3 divide-y divide-line-soft/70">
+                  {activeTrash.length === 0 && <p className="py-3 text-xs text-fog-600">A lixeira está vazia.</p>}
+                  {activeTrash.map((item) => <div key={item.id} className="flex flex-wrap items-center gap-2 py-2.5"><div className="min-w-0 flex-1"><p className="truncate text-sm text-fog-100">{item.label}</p><p className="text-[11px] text-fog-600">{item.entityType} · excluído por {item.deletedBy} em {new Date(item.deletedAt).toLocaleString("pt-BR")}</p></div><Btn className="h-7 px-2.5 text-xs" onClick={() => onRestoreTrash(item)}>Restaurar</Btn><Btn variant="danger" className="h-7 px-2.5 text-xs" onClick={() => { if (window.confirm(`Excluir definitivamente “${item.label}”? Esta ação não poderá ser desfeita.`)) onPermanentlyDeleteTrash(item.id); }}>Excluir definitivamente</Btn></div>)}
+                </div>
+              </div>
+
               <p className="num pt-1 text-[10.5px] uppercase tracking-[0.16em] text-fog-600">
-                Prumo v1.1 · dados armazenados somente neste dispositivo
+                Prumo v1.1 · dados armazenados neste dispositivo
               </p>
             </div>
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
 /* ---------- Tipos ---------- */
 
-export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "avaliacao" | "cadastro" | "config";
+export type ViewId = "painel" | "calc" | "fotos" | "vistorias" | "avaliacao" | "cadastro" | "config" | "master";
 export type InspStatus = "agendada" | "campo" | "concluida";
 export type ChecklistCondition = "nao_verificado" | "novo" | "bom" | "regular" | "desgastado" | "danificado" | "inexistente" | "nao_aplicavel";
 export type ChecklistSeverity = "info" | "atencao" | "critico";
@@ -162,11 +162,55 @@ export interface Activity {
   kind: "calc" | "foto" | "vistoria" | "nota";
 }
 
+export type UserRole = "master" | "admin" | "avaliador" | "vistoriador" | "cliente";
+
 export interface User {
   id: string;
   username: string;
   pass: string; // hash local
   name: string;
+  role?: UserRole;
+}
+
+export interface TrashItem {
+  id: string;
+  entityType: "client" | "inspection" | "assessment" | "comparable" | "photo";
+  entityId: string;
+  label: string;
+  payload: unknown;
+  deletedAt: string;
+  deletedBy: string;
+  restoredAt?: string;
+}
+
+export interface TenantAccount {
+  id: string;
+  name: string;
+  contact: string;
+  plan: "teste" | "essencial" | "profissional" | "empresarial";
+  status: "ativo" | "suspenso" | "cancelado";
+  createdAt: string;
+}
+
+export interface PartnerAccount {
+  id: string;
+  type: "revendedor" | "afiliado";
+  name: string;
+  contact: string;
+  status: "ativo" | "inativo";
+  commissionPercent: number;
+  createdAt: string;
+}
+
+export interface FinancialEntry {
+  id: string;
+  tenantId: string;
+  type: "cobranca" | "pagamento" | "comissao" | "estorno";
+  status: "pendente" | "pago" | "cancelado";
+  amount: number;
+  dueDate: string;
+  note: string;
+  createdAt: string;
 }
 
 export interface Session {

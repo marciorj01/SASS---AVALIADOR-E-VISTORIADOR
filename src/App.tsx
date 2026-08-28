@@ -8,6 +8,7 @@ import AddressFields from "./components/AddressFields";
 import Login from "./components/Login";
 import Cadastro from "./components/Cadastro";
 import Settings from "./components/Settings";
+import Master from "./components/Master";
 import { Btn, Field, Modal, Select, TextArea, TextInput } from "./components/ui";
 import {
   IcCalc,
@@ -57,6 +58,10 @@ import {
   type Profile,
   type Session,
   type User,
+  type TrashItem,
+  type TenantAccount,
+  type PartnerAccount,
+  type FinancialEntry,
   type ViewId,
 } from "./lib/store";
 
@@ -78,6 +83,7 @@ const NAV: { id: ViewId; label: string; short: string; index: string; icon: Reac
   { id: "avaliacao", label: "Avaliação mercadológica", short: "Avaliação", index: "05", icon: <IcCalc /> },
   { id: "cadastro", label: "Cadastro do avaliador", short: "Cadastro", index: "06", icon: <IcUser /> },
   { id: "config", label: "Configurações", short: "Config", index: "07", icon: <IcCog /> },
+  { id: "master", label: "Painel Master", short: "Master", index: "08", icon: <IcCog /> },
 ];
 
 const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
@@ -88,6 +94,7 @@ const VIEW_META: Record<ViewId, { title: string; sub: string }> = {
   avaliacao: { title: "Avaliação", sub: "mercado & homogeneização" },
   cadastro: { title: "Cadastro", sub: "avaliador & vistoriador" },
   config: { title: "Configurações", sub: "acesso & preferências" },
+  master: { title: "Painel Master", sub: "gestão da plataforma" },
 };
 
 function TopClock() {
@@ -115,6 +122,10 @@ export default function App() {
   const [assessments, setAssessments] = usePersist<PropertyAssessment[]>("prumo.assessments", () => []);
   const [comparableLibrary, setComparableLibrary] = usePersist<ComparableProperty[]>("prumo.comparableLibrary", () => []);
   const [comparisonColumns, setComparisonColumns] = usePersist<ComparisonColumn[]>("prumo.comparisonColumns", () => DEFAULT_COMPARISON_COLUMNS);
+  const [trash, setTrash] = usePersist<TrashItem[]>("prumo.trash", () => []);
+  const [tenants, setTenants] = usePersist<TenantAccount[]>("prumo.tenants", () => []);
+  const [partners, setPartners] = usePersist<PartnerAccount[]>("prumo.partners", () => []);
+  const [finances, setFinances] = usePersist<FinancialEntry[]>("prumo.finances", () => []);
 
   /* ---------- autenticação, perfil e vistoriados ---------- */
   const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
@@ -187,6 +198,11 @@ export default function App() {
     setActivity((prev) => [{ id: uid(), text, at: new Date().toISOString(), kind }, ...prev].slice(0, 40));
   }, [setActivity]);
 
+  const addTrash = useCallback((item: Omit<TrashItem, "id" | "deletedAt" | "deletedBy">) => {
+    if (!session) return;
+    setTrash((prev) => [{ ...item, id: uid(), deletedAt: new Date().toISOString(), deletedBy: session.name }, ...prev]);
+  }, [session, setTrash]);
+
   /* ---------- ações: autenticação, perfil e vistoriados ---------- */
   const handleLogin = useCallback(
     (username: string, pass: string, remember: boolean): string | null => {
@@ -238,10 +254,12 @@ export default function App() {
   const deleteClient = useCallback(
     (id: string) => {
       const c = clients.find((x) => x.id === id);
+      if (!c) return;
+      addTrash({ entityType: "client", entityId: c.id, label: c.name, payload: c });
       setClients((prev) => prev.filter((x) => x.id !== id));
-      toast(`Vistoriado “${c?.name ?? ""}” removido.`);
+      toast(`Vistoriado “${c.name}” movido para a lixeira.`);
     },
-    [clients, setClients, toast]
+    [addTrash, clients, setClients, toast]
   );
 
   /* ---------- ações: medições ---------- */
@@ -382,8 +400,11 @@ export default function App() {
   }, [log, setAssessments]);
 
   const deleteAssessment = useCallback((id: string) => {
-    setAssessments((prev) => prev.filter((item) => item.id !== id));
-  }, [setAssessments]);
+    const item = assessments.find((entry) => entry.id === id);
+    if (!item) return;
+    addTrash({ entityType: "assessment", entityId: item.id, label: item.address || "Avaliação", payload: item });
+    setAssessments((prev) => prev.filter((entry) => entry.id !== id));
+  }, [addTrash, assessments, setAssessments]);
 
   const saveComparableLibrary = useCallback((item: ComparableProperty) => {
     setComparableLibrary((prev) => [item, ...prev.filter((entry) => entry.id !== item.id)]);
@@ -396,6 +417,7 @@ export default function App() {
   const deleteInspection = useCallback(
     (id: string) => {
       const insp = inspections.find((i) => i.id === id);
+      if (insp) addTrash({ entityType: "inspection", entityId: insp.id, label: `${insp.code} · ${insp.client}`, payload: { inspection: insp, checklist: checklists.find((item) => item.inspectionId === id), fieldLog: fieldLogs.find((item) => item.inspectionId === id), photos: photos.filter((item) => item.inspectionId === id), measurements: measurements.filter((item) => item.inspectionId === id) } });
       setInspections((prev) => prev.filter((i) => i.id !== id));
       setPhotos((prev) => prev.map((p) => (p.inspectionId === id ? { ...p, inspectionId: null } : p)));
       setMeasurements((prev) => prev.map((m) => (m.inspectionId === id ? { ...m, inspectionId: null } : m)));
@@ -405,7 +427,7 @@ export default function App() {
       log("vistoria", `Vistoria ${insp?.code ?? ""} excluída (fotos e medições foram desvinculadas)`);
       toast("Vistoria excluída. Fotos e medições permanecem no acervo.");
     },
-    [inspections, log, setInspections, setPhotos, setMeasurements, setChecklists, setFieldLogs, toast]
+    [addTrash, checklists, fieldLogs, inspections, log, measurements, photos, setInspections, setPhotos, setMeasurements, setChecklists, setFieldLogs, toast]
   );
 
   /* ---------- navegação cruzada ---------- */
@@ -422,6 +444,31 @@ export default function App() {
   const consumeFocus = useCallback(() => setFocusPhoto(null), []);
 
   const meta = VIEW_META[view];
+  const isMaster = session?.username === "admin" || users.some((user) => user.id === session?.userId && user.role === "master");
+
+  const restoreTrash = useCallback((item: TrashItem) => {
+    if (item.entityType === "client") setClients((prev) => prev.some((entry) => entry.id === item.entityId) ? prev : [item.payload as Client, ...prev]);
+    if (item.entityType === "assessment") setAssessments((prev) => prev.some((entry) => entry.id === item.entityId) ? prev : [item.payload as PropertyAssessment, ...prev]);
+    if (item.entityType === "inspection") {
+      const payload = item.payload as { inspection: Inspection; checklist?: InspectionChecklist; fieldLog?: InspectionFieldLog; photos?: Photo[]; measurements?: Measurement[] };
+      setInspections((prev) => prev.some((entry) => entry.id === payload.inspection.id) ? prev : [payload.inspection, ...prev]);
+      if (payload.checklist) setChecklists((prev) => [payload.checklist!, ...prev.filter((entry) => entry.inspectionId !== payload.inspection.id)]);
+      if (payload.fieldLog) setFieldLogs((prev) => [payload.fieldLog!, ...prev.filter((entry) => entry.inspectionId !== payload.inspection.id)]);
+      if (payload.photos?.length) setPhotos((prev) => [...payload.photos!, ...prev.filter((entry) => entry.inspectionId !== payload.inspection.id)]);
+      if (payload.measurements?.length) setMeasurements((prev) => [...payload.measurements!, ...prev.filter((entry) => entry.inspectionId !== payload.inspection.id)]);
+    }
+    setTrash((prev) => prev.map((entry) => entry.id === item.id ? { ...entry, restoredAt: new Date().toISOString() } : entry));
+    toast(`“${item.label}” restaurado.`);
+  }, [setAssessments, setChecklists, setClients, setFieldLogs, setInspections, setMeasurements, setPhotos, setTrash, toast]);
+
+  const permanentlyDeleteTrash = useCallback((id: string) => {
+    setTrash((prev) => prev.filter((entry) => entry.id !== id));
+    toast("Registro excluído definitivamente da lixeira.");
+  }, [setTrash, toast]);
+
+  const addTenant = useCallback((tenant: TenantAccount) => setTenants((prev) => [tenant, ...prev]), [setTenants]);
+  const addPartner = useCallback((partner: PartnerAccount) => setPartners((prev) => [partner, ...prev]), [setPartners]);
+  const addFinance = useCallback((entry: FinancialEntry) => setFinances((prev) => [entry, ...prev]), [setFinances]);
 
   /* ---------- portão de acesso ---------- */
   if (!session) {
@@ -442,7 +489,7 @@ export default function App() {
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-          {NAV.map((n) => {
+          {NAV.filter((n) => n.id !== "master" || isMaster).map((n) => {
             const active = view === n.id;
             return (
               <button
@@ -606,6 +653,9 @@ export default function App() {
               />
             )}
             {view === "cadastro" && <Cadastro profile={profile} onSave={saveProfile} />}
+            {view === "master" && isMaster && (
+              <Master users={users} tenants={tenants} partners={partners} finances={finances} activity={activity} onAddTenant={addTenant} onAddPartner={addPartner} onAddFinance={addFinance} />
+            )}
             {view === "config" && (
               <Settings
                 profile={profile}
@@ -621,8 +671,11 @@ export default function App() {
                 installed={installed}
                 onInstall={() => void doInstall()}
                 data={{ inspections, photos, measurements, activity, assessments, checklists, fieldLogs, comparableLibrary, comparisonColumns }}
+                trash={trash}
                 comparisonColumns={comparisonColumns}
                 onSaveComparisonColumns={setComparisonColumns}
+                onRestoreTrash={restoreTrash}
+                onPermanentlyDeleteTrash={permanentlyDeleteTrash}
                 toast={toast}
               />
             )}
@@ -632,8 +685,8 @@ export default function App() {
 
       {/* ---------- navegação móvel ---------- */}
       <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line-soft bg-ink-900/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-6">
-          {NAV.map((n) => {
+        <div className="grid grid-cols-4 sm:grid-cols-6">
+          {NAV.filter((n) => n.id !== "master" || isMaster).map((n) => {
             const active = view === n.id;
             return (
               <button
