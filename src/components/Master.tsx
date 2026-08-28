@@ -489,7 +489,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
               {/* Bloco 2: Contato & Responsável */}
               <div>
                 <p className="eyebrow mb-2 text-brand-300">2. RESPONSÁVEL E CONTATO</p>
-                <div className="grid gap-3 sm:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-4 items-end">
                   <Field label="Nome do Responsável *">
                     <TextInput
                       value={tenantForm.responsibleName}
@@ -504,7 +504,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
                       placeholder="Ex: Diretor / Perito Avaliador"
                     />
                   </Field>
-                  <Field label="E-mail Principal (para login/notificação) *">
+                  <Field label="E-mail Principal *">
                     <TextInput
                       type="email"
                       value={tenantForm.contact}
@@ -513,7 +513,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
                       required
                     />
                   </Field>
-                  <Field label="Telefone / Celular (WhatsApp)">
+                  <Field label="Telefone / WhatsApp">
                     <TextInput
                       value={tenantForm.phone}
                       onChange={(e) => setTenantForm((v) => ({ ...v, phone: e.target.value }))}
@@ -526,7 +526,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
               {/* Bloco 3: Endereço */}
               <div>
                 <p className="eyebrow mb-2 text-brand-300">3. LOCALIZAÇÃO DA EMPRESA</p>
-                <div className="grid gap-3 sm:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-4 items-end">
                   <Field label="CEP" hint="Busca automática ao digitar 8 números">
                     <TextInput
                       value={tenantForm.cep}
@@ -577,12 +577,12 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
               </div>
 
               {/* Bloco 4: Contrato, Plano e Acesso */}
-              <div className="grid gap-4 lg:grid-cols-2">
+              <div className="grid gap-4 lg:grid-cols-2 items-start">
                 <div className="rounded-lg border border-line bg-ink-800/60 p-4 space-y-3">
                   <p className="eyebrow text-brand-400 flex items-center gap-1">
                     <span>💳</span> CONTRATO E ASSINATURA
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-3 items-end">
                     <Field label="Plano Comercial">
                       <Select
                         value={tenantForm.plan}
@@ -595,7 +595,7 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
                         <option value="empresarial">Empresarial</option>
                       </Select>
                     </Field>
-                    <Field label="Valor da Mensalidade (R$)">
+                    <Field label="Valor Mensal (R$)">
                       <TextInput
                         value={tenantForm.monthlyPrice}
                         onChange={(e) => setTenantForm((v) => ({ ...v, monthlyPrice: e.target.value }))}

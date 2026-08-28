@@ -107,14 +107,16 @@ export function Field({
   label,
   children,
   hint,
+  className = "",
 }: {
   label: string;
   children: ReactNode;
   hint?: string;
+  className?: string;
 }) {
   return (
-    <div>
-      <label className="lbl">{label}</label>
+    <div className={`flex flex-col justify-end ${className}`}>
+      <label className="lbl mb-1 block font-medium">{label}</label>
       {children}
       {hint && <p className="mt-1 text-[11px] text-fog-600">{hint}</p>}
     </div>
