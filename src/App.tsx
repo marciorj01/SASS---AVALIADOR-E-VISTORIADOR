@@ -39,6 +39,9 @@ import {
   seedPhotos,
   seedProfile,
   seedUsers,
+  seedTenants,
+  seedPartners,
+  seedFinances,
   todayISO,
   uid,
   usePersist,
@@ -123,9 +126,9 @@ export default function App() {
   const [comparableLibrary, setComparableLibrary] = usePersist<ComparableProperty[]>("prumo.comparableLibrary", () => []);
   const [comparisonColumns, setComparisonColumns] = usePersist<ComparisonColumn[]>("prumo.comparisonColumns", () => DEFAULT_COMPARISON_COLUMNS);
   const [trash, setTrash] = usePersist<TrashItem[]>("prumo.trash", () => []);
-  const [tenants, setTenants] = usePersist<TenantAccount[]>("prumo.tenants", () => []);
-  const [partners, setPartners] = usePersist<PartnerAccount[]>("prumo.partners", () => []);
-  const [finances, setFinances] = usePersist<FinancialEntry[]>("prumo.finances", () => []);
+  const [tenants, setTenants] = usePersist<TenantAccount[]>("prumo.tenants", seedTenants);
+  const [partners, setPartners] = usePersist<PartnerAccount[]>("prumo.partners", seedPartners);
+  const [finances, setFinances] = usePersist<FinancialEntry[]>("prumo.finances", seedFinances);
 
   /* ---------- autenticação, perfil e vistoriados ---------- */
   const [users, setUsers] = usePersist<User[]>("prumo.users", seedUsers);
@@ -207,8 +210,8 @@ export default function App() {
   const handleLogin = useCallback(
     (username: string, pass: string, remember: boolean): string | null => {
       const u = users.find((x) => x.username === username.trim().toLowerCase());
-      if (!u || u.pass !== hashPass(pass)) return "Usuário ou senha inválidos. No primeiro acesso use admin / admin.";
-      writeSession({ userId: u.id, username: u.username, name: u.name, loginAt: new Date().toISOString() }, remember);
+      if (!u || u.pass !== hashPass(pass)) return "Usuário ou senha inválidos. Veja a dica de acessos abaixo.";
+      writeSession({ userId: u.id, username: u.username, name: u.name, role: u.role, tenantId: u.tenantId, loginAt: new Date().toISOString() }, remember);
       setSession(readSession());
       setHasLoggedIn(true);
       return null;
@@ -444,7 +447,15 @@ export default function App() {
   const consumeFocus = useCallback(() => setFocusPhoto(null), []);
 
   const meta = VIEW_META[view];
-  const isMaster = session?.username === "admin" || users.some((user) => user.id === session?.userId && user.role === "master");
+  const isMaster = Boolean(
+    session?.role === "master" || session?.username === "admin" || users.some((user) => user.id === session?.userId && user.role === "master")
+  );
+
+  useEffect(() => {
+    if (view === "master" && !isMaster) {
+      setView("painel");
+    }
+  }, [view, isMaster]);
 
   const restoreTrash = useCallback((item: TrashItem) => {
     if (item.entityType === "client") setClients((prev) => prev.some((entry) => entry.id === item.entityId) ? prev : [item.payload as Client, ...prev]);
@@ -466,9 +477,55 @@ export default function App() {
     toast("Registro excluído definitivamente da lixeira.");
   }, [setTrash, toast]);
 
-  const addTenant = useCallback((tenant: TenantAccount) => setTenants((prev) => [tenant, ...prev]), [setTenants]);
-  const addPartner = useCallback((partner: PartnerAccount) => setPartners((prev) => [partner, ...prev]), [setPartners]);
-  const addFinance = useCallback((entry: FinancialEntry) => setFinances((prev) => [entry, ...prev]), [setFinances]);
+  const addTenant = useCallback(
+    (tenant: TenantAccount, initialUser: { username: string; pass: string }) => {
+      setTenants((prev) => [tenant, ...prev]);
+      const newUser: User = {
+        id: uid(),
+        username: initialUser.username.trim().toLowerCase(),
+        pass: hashPass(initialUser.pass.trim()),
+        name: `${tenant.name} (Cliente)`,
+        role: "admin",
+        tenantId: tenant.id,
+      };
+      setUsers((prev) => [newUser, ...prev]);
+      log("nota", `Novo cliente cadastrado: ${tenant.name} (Login: ${newUser.username})`);
+      toast(`Cliente “${tenant.name}” cadastrado. Acesso liberado: ${newUser.username}`);
+    },
+    [log, setTenants, setUsers, toast]
+  );
+
+  const deleteTenant = useCallback((id: string) => {
+    const t = tenants.find((x) => x.id === id);
+    setTenants((prev) => prev.filter((x) => x.id !== id));
+    setUsers((prev) => prev.filter((x) => x.tenantId !== id));
+    log("nota", `Cliente excluído do cadastro: ${t?.name ?? id}`);
+    toast("Cliente removido do cadastro.");
+  }, [log, setTenants, setUsers, tenants, toast]);
+
+  const addPartner = useCallback((partner: PartnerAccount) => {
+    setPartners((prev) => [partner, ...prev]);
+    log("nota", `Novo parceiro comercial registrado: ${partner.name}`);
+    toast(`Parceiro “${partner.name}” cadastrado.`);
+  }, [log, setPartners, toast]);
+
+  const addFinance = useCallback((entry: FinancialEntry) => {
+    setFinances((prev) => [entry, ...prev]);
+    log("calc", `Lançamento financeiro registrado (${(entry.direction ?? "entrada") === "entrada" ? "Entrada" : "Saída"}): R$ ${entry.amount.toFixed(2)}`);
+    toast("Lançamento financeiro salvo.");
+  }, [log, setFinances, toast]);
+
+  const updateFinanceStatus = useCallback((id: string, status: FinancialEntry["status"]) => {
+    setFinances((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, status, paidAt: status === "pago" ? new Date().toISOString() : item.paidAt } : item))
+    );
+    toast(status === "pago" ? "Lançamento marcado como PAGO!" : "Status do lançamento atualizado.");
+  }, [setFinances, toast]);
+
+  const deleteFinance = useCallback((id: string) => {
+    setFinances((prev) => prev.filter((item) => item.id !== id));
+    toast("Lançamento financeiro removido.");
+  }, [setFinances, toast]);
 
   /* ---------- portão de acesso ---------- */
   if (!session) {
@@ -654,7 +711,20 @@ export default function App() {
             )}
             {view === "cadastro" && <Cadastro profile={profile} onSave={saveProfile} />}
             {view === "master" && isMaster && (
-              <Master users={users} tenants={tenants} partners={partners} finances={finances} activity={activity} onAddTenant={addTenant} onAddPartner={addPartner} onAddFinance={addFinance} />
+              <Master
+                users={users}
+                tenants={tenants}
+                partners={partners}
+                finances={finances}
+                activity={activity}
+                onAddTenant={addTenant}
+                onDeleteTenant={deleteTenant}
+                onAddPartner={addPartner}
+                onAddFinance={addFinance}
+                onUpdateFinanceStatus={updateFinanceStatus}
+                onDeleteFinance={deleteFinance}
+                toast={toast}
+              />
             )}
             {view === "config" && (
               <Settings

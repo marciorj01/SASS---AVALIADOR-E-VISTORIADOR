@@ -1,5 +1,5 @@
 /* Prumo — Service Worker (cache local para uso offline em campo) */
-const CACHE = "prumo-v1";
+const CACHE = "prumo-v5";
 const CORE = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon.svg"];
 
 self.addEventListener("install", (event) => {

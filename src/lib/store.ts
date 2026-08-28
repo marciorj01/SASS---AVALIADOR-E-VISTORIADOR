@@ -170,6 +170,7 @@ export interface User {
   pass: string; // hash local
   name: string;
   role?: UserRole;
+  tenantId?: string;
 }
 
 export interface TrashItem {
@@ -185,10 +186,23 @@ export interface TrashItem {
 
 export interface TenantAccount {
   id: string;
-  name: string;
-  contact: string;
-  plan: "teste" | "essencial" | "profissional" | "empresarial";
+  name: string; // Nome Fantasia ou Nome Comercial
+  legalName?: string; // Razão Social
+  doc?: string; // CNPJ / CPF
+  contact: string; // E-mail principal
+  phone?: string; // Celular / WhatsApp
+  responsibleName?: string; // Nome do Responsável
+  responsibleRole?: string; // Cargo do Responsável
+  cep?: string;
+  address?: string;
+  city?: string;
+  uf?: string;
+  plan: "plano_unico" | "teste" | "essencial" | "profissional" | "empresarial";
+  monthlyPrice?: number; // Valor da assinatura (ex: 199.00)
+  dueDateDay?: number; // Dia de vencimento (ex: 10)
   status: "ativo" | "suspenso" | "cancelado";
+  initialUsername?: string;
+  initialPassword?: string;
   createdAt: string;
 }
 
@@ -205,10 +219,14 @@ export interface PartnerAccount {
 export interface FinancialEntry {
   id: string;
   tenantId: string;
-  type: "cobranca" | "pagamento" | "comissao" | "estorno";
+  partnerId?: string;
+  direction?: "entrada" | "saida"; // entrada = receita, saida = despesa/comissao
+  type: "assinatura" | "cobranca" | "pagamento" | "comissao" | "estorno" | "outros";
+  planName?: string; // ex: "Plano Único Prumo"
   status: "pendente" | "pago" | "cancelado";
   amount: number;
   dueDate: string;
+  paidAt?: string;
   note: string;
   createdAt: string;
 }
@@ -217,6 +235,8 @@ export interface Session {
   userId: string;
   username: string;
   name: string;
+  role?: UserRole;
+  tenantId?: string;
   loginAt: string;
 }
 
@@ -514,6 +534,21 @@ export const clearSession = (): void => {
 
 /* ---------- Persistência local ---------- */
 
+const APP_DATA_VERSION = "prumo-v2.0";
+try {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const currentVer = localStorage.getItem("prumo.data_version");
+    if (currentVer !== APP_DATA_VERSION) {
+      localStorage.removeItem("prumo.tenants");
+      localStorage.removeItem("prumo.finances");
+      localStorage.removeItem("prumo.users");
+      localStorage.setItem("prumo.data_version", APP_DATA_VERSION);
+    }
+  }
+} catch {
+  /* ignore storage error */
+}
+
 export function usePersist<T>(key: string, initial: () => T): [T, Dispatch<SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -624,7 +659,70 @@ function buildSeed() {
   ];
 
   const users: User[] = [
-    { id: "u-admin", username: "admin", pass: hashPass("admin"), name: "Administrador" },
+    { id: "u-admin", username: "admin", pass: hashPass("admin"), name: "Desenvolvedor Master", role: "master" },
+    { id: "u-cliente-demo", username: "cliente_demo", pass: hashPass("cliente123"), name: "Imobiliária Horizonte (Cliente)", role: "admin", tenantId: "t-demo-1" },
+  ];
+
+  const tenants: TenantAccount[] = [
+    {
+      id: "t-demo-1",
+      name: "Imobiliária Horizonte",
+      legalName: "Imobiliária Horizonte Ltda. ME",
+      doc: "12.345.678/0001-90",
+      contact: "contato@horizonte.com.br",
+      phone: "(19) 99887-1122",
+      responsibleName: "Marcio Roger",
+      responsibleRole: "Diretor Comercial",
+      address: "Av. Brasil, 1520",
+      city: "Campinas",
+      uf: "SP",
+      plan: "plano_unico",
+      monthlyPrice: 199.0,
+      dueDateDay: 10,
+      status: "ativo",
+      initialUsername: "cliente_demo",
+      initialPassword: "cliente123",
+      createdAt: iso(5 * 86400000),
+    },
+  ];
+
+  const partners: PartnerAccount[] = [
+    {
+      id: "p-demo-1",
+      type: "revendedor",
+      name: "Sistemas & Parceiros Vendas",
+      contact: "revenda@parceiro.com",
+      status: "ativo",
+      commissionPercent: 20,
+      createdAt: iso(10 * 86400000),
+    },
+  ];
+
+  const finances: FinancialEntry[] = [
+    {
+      id: "f-demo-1",
+      tenantId: "t-demo-1",
+      direction: "entrada",
+      type: "assinatura",
+      planName: "Plano Único Prumo",
+      status: "pago",
+      amount: 199,
+      dueDate: todayISO(),
+      note: "Mensalidade Plano Único Prumo",
+      createdAt: iso(2 * 86400000),
+    },
+    {
+      id: "f-demo-2",
+      tenantId: "t-demo-1",
+      direction: "saida",
+      type: "comissao",
+      planName: "Plano Único Prumo",
+      status: "pendente",
+      amount: 39.8,
+      dueDate: todayISO(),
+      note: "Comissão de Revendedor (20%)",
+      createdAt: iso(1 * 86400000),
+    },
   ];
 
   const profile: Profile = {
@@ -655,7 +753,7 @@ function buildSeed() {
     },
   ];
 
-  return { inspections, photos, measurements, activity, users, profile, clients };
+  return { inspections, photos, measurements, activity, users, tenants, partners, finances, profile, clients };
 }
 
 const SEED = buildSeed();
@@ -666,5 +764,8 @@ export const seedChecklists = (): InspectionChecklist[] => [];
 export const seedFieldLogs = (): InspectionFieldLog[] => [];
 export const seedActivity = () => SEED.activity;
 export const seedUsers = () => SEED.users;
+export const seedTenants = () => SEED.tenants;
+export const seedPartners = () => SEED.partners;
+export const seedFinances = () => SEED.finances;
 export const seedProfile = () => SEED.profile;
 export const seedClients = () => SEED.clients;

@@ -128,14 +128,15 @@ export default function Login({ firstUse, onLogin }: LoginProps) {
               Identifique-se para abrir o painel de campo, a calculadora de medidas e o registro fotográfico.
             </p>
 
-            {firstUse && (
-              <div className="mt-4 rounded-md border border-accent-400/40 bg-accent-400/8 px-3.5 py-2.5">
-                <p className="num text-[11px] font-semibold uppercase tracking-[0.14em] text-accent-300">Primeiro acesso</p>
-                <p className="mt-1 text-[13px] text-fog-300">
-                  Usuário <strong className="num text-accent-300">admin</strong> · Senha <strong className="num text-accent-300">admin</strong> — altere em Configurações após entrar.
-                </p>
-              </div>
-            )}
+            <div className="mt-4 rounded-md border border-brand-400/30 bg-ink-800/80 p-3 space-y-1.5">
+              <p className="num text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-300">Demonstração de Contas e Perfis</p>
+              <p className="text-[12.5px] text-fog-300">
+                • <strong>Desenvolvedor Master:</strong> login <code className="text-brand-300">admin</code> · senha <code className="text-brand-300">admin</code> (Acesso Master + Plataforma)
+              </p>
+              <p className="text-[12.5px] text-fog-300">
+                • <strong>Cliente Contratante:</strong> login <code className="text-mint-400">cliente_demo</code> · senha <code className="text-mint-400">cliente123</code> (Acesso restrito à operação, sem Painel Master)
+              </p>
+            </div>
 
             {error && (
               <div role="alert" className="mt-4 flex items-start gap-2.5 rounded-md border border-danger-400/45 bg-danger-400/10 px-3.5 py-2.5 text-[13px] text-danger-400">
