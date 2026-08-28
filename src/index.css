@@ -35,6 +35,32 @@
   --animate-shake: shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-ink-950: #f4f7fb;
+  --color-ink-900: #ffffff;
+  --color-ink-850: #eef3f8;
+  --color-ink-800: #e6edf5;
+  --color-ink-700: #d9e5ef;
+  --color-ink-600: #c4d4e2;
+  --color-line: #aebfd0;
+  --color-line-soft: #cbd8e4;
+  --color-fog-100: #172231;
+  --color-fog-300: #304256;
+  --color-fog-500: #52677d;
+  --color-fog-600: #6b8095;
+  --color-brand-300: #075d83;
+  --color-brand-400: #087aa8;
+  --color-brand-500: #056b94;
+  --color-accent-300: #8a5300;
+  --color-accent-400: #9b5c00;
+  --color-accent-500: #7b4700;
+  --color-mint-400: #087443;
+  --color-danger-400: #b42318;
+  --color-paper-50: #ffffff;
+  --color-paper-200: #eef2f5;
+}
+
 @keyframes rise {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: none; }
@@ -62,6 +88,15 @@
 
 @layer base {
   :root { color-scheme: dark; }
+  :root[data-theme="light"] body {
+    background-image:
+      linear-gradient(rgba(50, 94, 125, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(50, 94, 125, 0.045) 1px, transparent 1px);
+    background-size: 28px 28px;
+    background-attachment: fixed;
+  }
+  :root[data-theme="light"] ::selection { background: rgba(8, 122, 168, 0.22); color: #172231; }
+  :root[data-theme="light"] ::-webkit-scrollbar-thumb { background: #b8c8d6; border-color: #f4f7fb; }
   html, body, #root { min-height: 100%; }
   body {
     margin: 0;

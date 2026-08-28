@@ -122,6 +122,12 @@ export default function App() {
   const [clients, setClients] = usePersist<Client[]>("prumo.clients", seedClients);
   const [hasLoggedIn, setHasLoggedIn] = usePersist<boolean>("prumo.logged", () => false);
   const [session, setSession] = useState<Session | null>(() => readSession());
+  const [theme, setTheme] = usePersist<"dark" | "light">("prumo.theme", () => "dark");
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
 
   /* ---------- estado de navegação ---------- */
   const [view, setView] = useState<ViewId>("painel");
@@ -482,6 +488,15 @@ export default function App() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTheme((current) => (current === "dark" ? "light" : "dark"))}
+                title={theme === "dark" ? "Mudar para tela clara" : "Mudar para tela escura"}
+                aria-label={theme === "dark" ? "Mudar para tela clara" : "Mudar para tela escura"}
+                className="rounded-md border border-line bg-ink-800/60 px-2 py-1.5 text-xs font-medium text-fog-300 transition hover:border-brand-400/60 hover:text-brand-300 active:scale-95"
+              >
+                {theme === "dark" ? "Tela clara" : "Tela escura"}
+              </button>
               <span
                 className={`chip ${online ? "border-mint-400/40 text-mint-400" : "border-accent-400/50 bg-accent-400/10 text-accent-300"}`}
                 title={online ? "Conectado" : "Offline — dados salvos localmente"}
