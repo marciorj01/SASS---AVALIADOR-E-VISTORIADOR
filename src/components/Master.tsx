@@ -56,6 +56,44 @@ export default function Master({
     pass: "cliente123",
   });
 
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepMessage, setCepMessage] = useState("");
+
+  const lookupTenantCep = async (cepInput: string) => {
+    const cepDigits = cepInput.replace(/\D/g, "");
+    if (cepDigits.length !== 8) return;
+    setCepLoading(true);
+    setCepMessage("");
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cepDigits}/json/`);
+      const data = (await response.json()) as {
+        erro?: boolean;
+        logradouro?: string;
+        bairro?: string;
+        localidade?: string;
+        uf?: string;
+      };
+      if (data.erro) {
+        setCepMessage("CEP não encontrado. Preencha o endereço manualmente.");
+        return;
+      }
+      const street = [data.logradouro, data.bairro].filter(Boolean).join(", ");
+      const formattedCep = cepDigits.replace(/^(\d{5})(\d{3})$/, "$1-$2");
+      setTenantForm((v) => ({
+        ...v,
+        cep: formattedCep,
+        address: street || v.address,
+        city: data.localidade || v.city,
+        uf: data.uf || v.uf,
+      }));
+      setCepMessage(`🟢 Endereço localizado: ${street} — ${data.localidade}/${data.uf}`);
+    } catch {
+      setCepMessage("Busca de CEP indisponível. Preencha o endereço manualmente.");
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
   /* ---------- Modal de Envio / Compartilhamento de Acesso ---------- */
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [selectedShareTenant, setSelectedShareTenant] = useState<TenantAccount | null>(null);
@@ -489,11 +527,23 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
               <div>
                 <p className="eyebrow mb-2 text-brand-300">3. LOCALIZAÇÃO DA EMPRESA</p>
                 <div className="grid gap-3 sm:grid-cols-4">
-                  <Field label="CEP">
+                  <Field label="CEP" hint="Busca automática ao digitar 8 números">
                     <TextInput
                       value={tenantForm.cep}
-                      onChange={(e) => setTenantForm((v) => ({ ...v, cep: e.target.value }))}
-                      placeholder="13000-000"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTenantForm((v) => ({ ...v, cep: val }));
+                        if (val.replace(/\D/g, "").length === 8) {
+                          void lookupTenantCep(val);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (tenantForm.cep.replace(/\D/g, "").length === 8) {
+                          void lookupTenantCep(tenantForm.cep);
+                        }
+                      }}
+                      placeholder="00000-000"
+                      inputMode="numeric"
                     />
                   </Field>
                   <Field label="Endereço / Logradouro">
@@ -519,6 +569,11 @@ Se tiver qualquer dúvida, nossa equipe de suporte está à sua disposição!`;
                     />
                   </Field>
                 </div>
+                {(cepLoading || cepMessage) && (
+                  <p className="mt-2 text-xs text-brand-300 font-medium">
+                    {cepLoading ? "🔄 Buscando endereço no ViaCEP..." : cepMessage}
+                  </p>
+                )}
               </div>
 
               {/* Bloco 4: Contrato, Plano e Acesso */}
